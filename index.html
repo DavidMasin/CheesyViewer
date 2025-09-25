@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>Cheesy Viewer</title>
+    <title>Cheesy Viewer (Compact)</title>
     <style>
         :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#e24b4b;--blue:#4aa3ff}
         *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
@@ -29,7 +29,7 @@
 </head>
 <body>
 <div class="wrap">
-    <h1 id="matchTitle">Cheesy Viewer</h1>
+    <h1 id="matchTitle">Cheesy Viewer (Compact)</h1>
     <div id="subtitle" class="muted">Awaiting data…</div>
 
     <section class="grid" style="margin-top:16px">
@@ -77,252 +77,153 @@
     </div>
 </div>
 
-<!-- Safe, pretty-printed LZString decoder (only decompressFromEncodedURIComponent) -->
 <script>
-    window.LZString = window.LZString || (function(){
-        var f = String.fromCharCode;
-        var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
-        var baseReverseDic = {};
-        function getBaseValue(alphabet, character) {
-            if (!baseReverseDic[alphabet]) {
-                baseReverseDic[alphabet] = {};
-                for (var i=0; i<alphabet.length; i++) baseReverseDic[alphabet][alphabet.charAt(i)] = i;
-            }
-            return baseReverseDic[alphabet][character];
-        }
-        function _decompress(length, resetValue, getNextValue) {
-            var dictionary = [], enlargeIn = 4, dictSize = 4, numBits = 3,
-                entry = "", result = [], i, w, bits, resb, maxpower, power,
-                data = { val: getNextValue(0), position: resetValue, index: 1 };
-            for (i=0; i<3; i+=1) dictionary[i] = i;
+    // ========================= Base64URL helpers =========================
+    function b64urlToBytes(s){ s=s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var bin=atob(s); var bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
+    function bytesToB64url(bytes){ var bin=''; for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
 
-            bits = 0; maxpower = Math.pow(2,2); power = 1;
-            while (power != maxpower) {
-                resb = data.val & data.position; data.position >>= 1;
-                if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-            }
-            switch (bits) {
-                case 0:
-                    bits = 0; maxpower = Math.pow(2,8); power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position; data.position >>= 1;
-                        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                        bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-                    }
-                    entry = f(bits); break;
-                case 1:
-                    bits = 0; maxpower = Math.pow(2,16); power = 1;
-                    while (power != maxpower) {
-                        resb = data.val & data.position; data.position >>= 1;
-                        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                        bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-                    }
-                    entry = f(bits); break;
-                case 2: return "";
-            }
-            dictionary[3] = entry; var w = entry; result.push(entry);
+    // ========================= Bit Reader/Writer =========================
+    function BitReader(bytes){ this.b=bytes; this.i=0; this.buf=0; this.bits=0; }
+    BitReader.prototype.read = function(n){ var out=0; var bitPos=0; while(n>0){ if(this.bits===0){ if(this.i>=this.b.length) return null; this.buf=this.b[this.i++]; this.bits=8; } var take=Math.min(this.bits,n); var mask=(1<<take)-1; out |= ((this.buf & mask) << bitPos); this.buf >>= take; this.bits-=take; n-=take; bitPos+=take; } return out; };
 
-            while (true) {
-                if (data.index > length) return "";
-                bits = 0; maxpower = Math.pow(2, numBits); power = 1;
-                while (power != maxpower) {
-                    resb = data.val & data.position; data.position >>= 1;
-                    if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                    bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-                }
-                var cnum = bits, str;
-                switch (cnum) {
-                    case 0:
-                        bits = 0; maxpower = Math.pow(2,8); power = 1;
-                        while (power != maxpower) {
-                            resb = data.val & data.position; data.position >>= 1;
-                            if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                            bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-                        }
-                        dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break;
-                    case 1:
-                        bits = 0; maxpower = Math.pow(2,16); power = 1;
-                        while (power != maxpower) {
-                            resb = data.val & data.position; data.position >>= 1;
-                            if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
-                            bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
-                        }
-                        dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break;
-                    case 2: return result.join("");
-                }
-                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
-                if (dictionary[cnum]) str = dictionary[cnum];
-                else { if (cnum === dictSize) str = w + w.charAt(0); else return null; }
-                result.push(str);
-                dictionary[dictSize++] = w + str.charAt(0);
-                enlargeIn--; w = str;
-                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
-            }
-        }
-        return {
-            decompressFromEncodedURIComponent: function (input) {
-                if (input == null) return "";
-                if (input === "") return null;
-                input = input.replace(/ /g, "+");
-                return _decompress(input.length, 32, function(i){
-                    return getBaseValue(keyStrUriSafe, input.charAt(i));
-                });
-            }
-        };
-    })();
-</script>
-
-<script>
-    // Utilities
-    function byId(id){return document.getElementById(id)}
-    function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
-
-    // Parse #json= (preferred), #d= / #data= (compressed)
-    function readPackedFromHash(){
-        var h = location.hash || "";
-        var keys = ["json=", "d=", "data="]; // try plain JSON first
-        for (var i=0;i<keys.length;i++){
-            var k = keys[i], idx = h.indexOf(k);
-            if (idx !== -1){
-                var v = h.substring(idx + k.length);
-                var a = v.indexOf("&"); if (a !== -1) v = v.substring(0, a);
-                return { key: k.slice(0,-1), value: v };
-            }
-        }
+    // ========================= Hash parsing =========================
+    function getFrag(){ var h=location.hash||''; if(h.startsWith('#')) h=h.slice(1); return h; }
+    function parseHash(){
+        var h=getFrag();
+        // Preferred: compact packet "p=" (base64url of binary packet)
+        var m=h.match(/(?:^|&)p=([^&]+)/); if(m) return {kind:'p', val:m[1]};
+        // Fallback: plain JSON "json="
+        m=h.match(/(?:^|&)json=([^&]+)/); if(m) return {kind:'json', val:m[1]};
+        // Legacy compressed "d="/"data=" (won't be used in compact mode, but supported)
+        m=h.match(/(?:^|&)(?:d|data)=([^&]+)/); if(m) return {kind:'lz', val:m[1]};
         return null;
     }
 
-    function showError(msg){
-        var el = document.getElementById("subtitle");
-        if (el) el.innerHTML = '<span class="error">'+msg+'</span>';
-        try { console.error("[VIEWER]", msg); } catch(_){ }
+    // ========================= Compact Packet v1 =========================
+    // Layout (bits):
+    // 8: version (=1)
+    // 6 * 14: team numbers (R1,R2,R3,B1,B2,B3) — 0 if missing
+    // 24 * 2: RED reef counts (faces A..F, levels 1..4) — clamp 0..3
+    // 24 * 2: BLUE reef counts (faces A..F, levels 1..4) — clamp 0..3
+    // 4 + 4: RED AlgaeRemoved(0..15), AlgaeProcessed(0..15)
+    // 4 + 4: BLUE AlgaeRemoved(0..15), AlgaeProcessed(0..15)
+    // Total = 8 + 84 + 48 + 48 + 8 + 8 = 196 bits → 25 bytes (pad to next byte if needed)
+
+    function decodePacketV1(bytes){
+        var br=new BitReader(bytes);
+        var ver=br.read(8); if(ver!==1) throw new Error('Unsupported packet version '+ver);
+        var teams=[]; for(var i=0;i<6;i++){ var t=br.read(14); teams.push(t||0); }
+        function readReef(){ var faces='ABCDEF'; var out={}; for(var fi=0;fi<6;fi++){ var f=faces[fi]; out[f]={1:0,2:0,3:0,4:0}; for(var lv=1;lv<=4;lv++){ out[f][lv]=br.read(2); } } return out; }
+        var reefR=readReef();
+        var reefB=readReef();
+        var rAR=br.read(4)||0, rAP=br.read(4)||0, bAR=br.read(4)||0, bAP=br.read(4)||0;
+        // Build viewer payload {m?, t:{r,b}, r:{A1..F4, AlgaeRemoved, AlgaeProcessed}, b:{...}}
+        function flatten(map){ var o={}; var faces='ABCDEF'; for(var fi=0;fi<6;fi++){ var f=faces[fi]; for(var lv=1;lv<=4;lv++){ o[f+lv]=map[f][lv]; } } return o; }
+        var red=flatten(reefR); red.AlgaeRemoved=rAR; red.AlgaeProcessed=rAP;
+        var blue=flatten(reefB); blue.AlgaeRemoved=bAR; blue.AlgaeProcessed=bAP;
+        return {
+            t:{ r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean) },
+            r:red,
+            b:blue
+        };
     }
 
-    // --- Reef helpers (extract counts A..F × L1..4) ---
-    function emptyCounts(){ var faces=['A','B','C','D','E','F'], c={}; for(var i=0;i<faces.length;i++){ c[faces[i]]={1:0,2:0,3:0,4:0}; } return c; }
-    function addCount(map, face, level, delta){ if(!map||!face||!map[face]) return; var lv=parseInt(level,10); if(isNaN(lv)||lv<1||lv>4) return; map[face][lv]+= (delta||1); }
-    function isFace(k){return /^[A-F]$/.test(k)}
-    function isFaceLevel(k){return /^[A-F][1-4]$/.test(k)}
-    function extractReefCounts(score){
-        var out=emptyCounts(); if(!score||typeof score!=="object") return out;
-        for(var k in score){ if(isFaceLevel(k)){ var v=score[k]; if(typeof v==="number"&&v>0) addCount(out,k[0],k[1],v); else if(v===true) addCount(out,k[0],k[1],1); }}
-        for(var fk in score){ if(isFace(fk)){ var v=score[fk]; if(Array.isArray(v)){ for(var i=0;i<Math.min(4,v.length);i++){ if(typeof v[i]==="number") addCount(out,fk,i+1,v[i]); }}
-        else if(v&&typeof v==="object"){ for(var lk in v){ var lv=lk.replace(/[^1-4]/g,""); if(lv){ var n=v[lk]; if(typeof n==="number"&&n>0) addCount(out,fk,lv,n); else if(n===true) addCount(out,fk,lv,1); } } } } }
-        function walk(x){ if(!x) return; if(Array.isArray(x)){ for(var i=0;i<x.length;i++){ var it=x[i]; if(typeof it==="string"&&isFaceLevel(it)) addCount(out,it[0],it[1],1); else if(it&&typeof it==="object") walk(it); } }
-        else if(typeof x==="object"){ for(var kk in x){ var vv=x[kk]; if(typeof vv==="string"&&isFaceLevel(vv)) addCount(out,vv[0],vv[1],1); else walk(vv); } } }
-        walk(score);
+    // ========================= LZString (decoder only, safe) =========================
+    // Only used if someone still passes #d=/#data=; compact flow won't need it.
+    (function(){
+        if(window.LZString) return;
+        var f=String.fromCharCode, keyStrUriSafe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$", baseReverseDic={};
+        function getBaseValue(alphabet, character) { if (!baseReverseDic[alphabet]) { baseReverseDic[alphabet] = {}; for (var i=0; i<alphabet.length; i++) baseReverseDic[alphabet][alphabet.charAt(i)] = i; } return baseReverseDic[alphabet][character]; }
+        function _decompress(length, resetValue, getNextValue) { var dictionary = [], enlargeIn = 4, dictSize = 4, numBits = 3, entry = "", result = [], i, w, bits, resb, maxpower, power, data = { val: getNextValue(0), position: resetValue, index: 1 }; for (i=0; i<3; i+=1) dictionary[i] = i; bits = 0; maxpower = Math.pow(2,2); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } switch (bits) { case 0: bits = 0; maxpower = Math.pow(2,8); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } entry = f(bits); break; case 1: bits = 0; maxpower = Math.pow(2,16); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } entry = f(bits); break; case 2: return ""; } dictionary[3] = entry; var w = entry; result.push(entry); while (true) { if (data.index > length) return ""; bits = 0; maxpower = Math.pow(2, numBits); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } var cnum = bits, str; switch (cnum) { case 0: bits = 0; maxpower = Math.pow(2,8); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break; case 1: bits = 0; maxpower = Math.pow(2,16); power = 1; while (power != maxpower) { resb = data.val & data.position; data.position >>= 1; if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); } bits |= (resb>0 ? 1 : 0) * power; power <<= 1; } dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break; case 2: return result.join(""); } if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; } if (dictionary[cnum]) str = dictionary[cnum]; else { if (cnum === dictSize) str = w + w.charAt(0); else return null; } result.push(str); dictionary[dictSize++] = w + str.charAt(0); enlargeIn--; w = str; if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; } } }
+        window.LZString = { decompressFromEncodedURIComponent: function (input) { if (input == null) return ""; if (input === "") return null; input = input.replace(/ /g, "+"); return _decompress(input.length, 32, function(i){ return getBaseValue(keyStrUriSafe, input.charAt(i)); }); } };
+    })();
+
+    // ========================= UI helpers =========================
+    function byId(id){return document.getElementById(id)}
+    function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
+
+    function extractReefCountsFromScore(score){
+        var out={}, faces='ABCDEF';
+        for(var fi=0;fi<6;fi++){ var f=faces[fi]; for(var lv=1;lv<=4;lv++){ var k=f+lv; var v=score[k]; if(typeof v==='number') out[k]=v; }}
+        out.AlgaeRemoved = typeof score.AlgaeRemoved==='number' ? score.AlgaeRemoved : 0;
+        out.AlgaeProcessed = typeof score.AlgaeProcessed==='number' ? score.AlgaeProcessed : 0;
         return out;
     }
 
-    // Draw reef as 4 rings (L1..L4), 6 faces
     function renderReef(svgId, counts){
         var svg=byId(svgId); if(!svg) return; svg.innerHTML="";
-        var W=600,H=520,CX=W/2,CY=H/2;
-        var R=[120,180,240,280]; // L1..L4 radii
-        function slicePath(cx,cy,r0,r1,a0,a1){
-            function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];}
-            var p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0);
-            return "M"+p0[0]+","+p0[1]+" A"+r0+","+r0+" 0 0 1 "+p1[0]+","+p1[1]+" L"+p2[0]+","+p2[1]+" A"+r1+","+r1+" 0 0 0 "+p3[0]+","+p3[1]+" Z";
-        }
-        var faces="ABCDEF";
+        var W=600,H=520,CX=W/2,CY=H/2; var R=[120,180,240,280];
+        function slicePath(cx,cy,r0,r1,a0,a1){ function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];} var p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0); return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`; }
+        var faces='ABCDEF';
         for(var fi=0; fi<6; fi++){
             var a0 = (Math.PI*2)*fi/6 - Math.PI/2, a1=(Math.PI*2)*(fi+1)/6 - Math.PI/2;
             for(var lv=1; lv<=4; lv++){
-                var v = counts[faces[fi]][lv] || 0;
-                var r0=R[lv-1]-(lv===1?25:20), r1=R[lv-1]+(lv===4?25:20);
-                var p = document.createElementNS("http://www.w3.org/2000/svg","path");
-                p.setAttribute("d",slicePath(CX,CY,r0,r1,a0,a1));
-                var shades=[0.94,0.90,0.86,0.82];
-                p.setAttribute("fill","rgba(90,150,255,"+(1-shades[lv-1]).toFixed(2)+")");
-                p.setAttribute("stroke","#0b1220"); p.setAttribute("stroke-width","1.2");
-                svg.appendChild(p);
-                if(v>0){
-                    var midr=(r0+r1)/2, mida=(a0+a1)/2;
-                    var tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida);
-                    var t = document.createElementNS("http://www.w3.org/2000/svg","text");
-                    t.setAttribute("x",tx); t.setAttribute("y",ty);
-                    t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","middle");
-                    t.setAttribute("font-size","16"); t.textContent=String(v);
-                    svg.appendChild(t);
-                }
+                var k=faces[fi]+lv; var v = counts[k]||0; var r0=R[lv-1]-(lv===1?25:20), r1=R[lv-1]+(lv===4?25:20);
+                var p = document.createElementNS("http://www.w3.org/2000/svg","path"); p.setAttribute("d",slicePath(CX,CY,r0,r1,a0,a1)); var shades=[0.94,0.90,0.86,0.82]; p.setAttribute("fill",`rgba(90,150,255,${(1-shades[lv-1]).toFixed(2)})`); p.setAttribute("stroke","#0b1220"); p.setAttribute("stroke-width","1.2"); svg.appendChild(p);
+                if(v>0){ var midr=(r0+r1)/2, mida=(a0+a1)/2; var tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida); var t = document.createElementNS("http://www.w3.org/2000/svg","text"); t.setAttribute("x",tx); t.setAttribute("y",ty); t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","middle"); t.setAttribute("font-size","16"); t.textContent=String(v); svg.appendChild(t); }
             }
         }
     }
 
     function renderAll(payload){
-        // Support minimal (#d/#data: r/b/m/t) and legacy full (result.RedScore/BlueScore)
-        var red = payload.r || (payload.result && (payload.result.RedScore || payload.result.red)) || {};
-        var blue= payload.b || (payload.result && (payload.result.BlueScore|| payload.result.blue)) || {};
+        var red = payload.r || payload.RedScore || (payload.result && (payload.result.RedScore||payload.result.red)) || {};
+        var blue= payload.b || payload.BlueScore|| (payload.result && (payload.result.BlueScore||payload.result.blue)) || {};
         var title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || "Match";
-
         setText('matchTitle', title + (payload.eventName ? " — " + payload.eventName : ""));
         setText('subtitle', 'Reef + breakdown');
-
         // Teams
-        var rTeams=(payload.t && payload.t.r) || (payload.teams && payload.teams.red) || [];
-        var bTeams=(payload.t && payload.t.b) || (payload.teams && payload.teams.blue) || [];
+        var rTeams=(payload.t && payload.t.r) || (payload.teams && (payload.teams.red||payload.teams.r)) || [];
+        var bTeams=(payload.t && payload.t.b) || (payload.teams && (payload.teams.blue||payload.teams.b)) || [];
         setText('teamsRed', (rTeams||[]).join(' • ')); setText('teamsBlue', (bTeams||[]).join(' • '));
-
-        // Breakdown table: list all numeric keys present in either side
-        (function(){
-            var tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML='';
-            var keys={},k; for(k in red){ if(typeof red[k]==='number') keys[k]=1; }
-            for(k in blue){ if(typeof blue[k]==='number') keys[k]=1; }
-            var list=Object.keys(keys).sort();
-            for(var i=0;i<list.length;i++){
-                var key=list[i], rv=red[key], bv=blue[key];
-                var row=document.createElement('tr');
-                row.innerHTML='<td>'+key+'</td><td class="red">'+(rv!=null?rv:'')+'</td><td class="blue">'+(bv!=null?bv:'')+'</td>';
-                tbody.appendChild(row);
-            }
+        // Breakdown
+        (function(){ var tbody=document.getElementById('breakdownBody'); if(!tbody) return; tbody.innerHTML='';
+            function addRow(n, rv, bv){ var tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); }
+            var faces='ABCDEF'; for(var fi=0;fi<6;fi++){ for(var lv=1;lv<=4;lv++){ var k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) addRow(k, red[k], blue[k]); } }
+            addRow('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0);
+            addRow('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
         })();
-
-        // Reef
-        renderReef('reefRed',  extractReefCounts(red));
-        renderReef('reefBlue', extractReefCounts(blue));
-
+        // Reef visuals
+        renderReef('reefRed',  extractReefCountsFromScore(red));
+        renderReef('reefBlue', extractReefCountsFromScore(blue));
         // Footer
-        try {
-            var stamp=payload.generated?new Date(payload.generated):new Date();
-            setText('when','Generated '+stamp.toLocaleString());
-            var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-            var url=URL.createObjectURL(blob);
-            byId('rawLink').innerHTML='<a href="'+url+'" download="cheesy_match.json">Download raw JSON</a>';
-        } catch(_){ }
+        try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); document.getElementById('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
     }
+
+    function showError(msg){ var el=document.getElementById('subtitle'); if(el) el.innerHTML='<span class="error">'+msg+'</span>'; console.error('[VIEWER]', msg); }
 
     (function main(){
         try{
-            var packed = readPackedFromHash();
-            if (packed){
-                var raw;
-                if (packed.key === "json"){
-                    raw = decodeURIComponent(packed.value);   // <— this path will be used now
-                } else {
-                    // compressed path
-                    if (!window.LZString || !LZString.decompressFromEncodedURIComponent)
-                        throw new Error("LZString not available to decode");
-                    raw = LZString.decompressFromEncodedURIComponent(packed.value);
-                    if (!raw) throw new Error("Failed to decode compressed data");
+            var frag=parseHash();
+            if(!frag){
+                if((location.search||'').match(/(^|[?&])demo=1(&|$)/)){
+                    // build a tiny demo packet
+                    var bytes=new Uint8Array(25); // enough for v1 (we'll fill bits procedurally)
+                    var bit=0; function put(val,bits){ for(var i=0;i<bits;i++){ var bitval=(val>>i)&1; var idx=(bit>>3); var off=(bit&7); bytes[idx]|=(bitval<<off); bit++; } }
+                    put(1,8); // version
+                    var demoTeams=[111,222,333,444,555,666]; for(var i=0;i<6;i++) put(demoTeams[i],14);
+                    function putReef(fill){ var faces=6, levels=4; for(var f=0;f<faces;f++){ for(var lv=1;lv<=levels;lv++){ put(fill(f,lv),2); } } }
+                    putReef(function(f,lv){ return (f===0&&lv===1)?2 : (f===1&&lv===2)?1 : 0; }); // RED
+                    putReef(function(f,lv){ return (f===2&&lv===3)?2 : (f===3&&lv===4)?1 : 0; }); // BLUE
+                    put(2,4); put(1,4); // R algae removed/processed
+                    put(1,4); put(2,4); // B algae removed/processed
+                    var p = bytesToB64url(bytes);
+                    location.replace(location.origin+location.pathname+'#p='+p);
+                    return;
                 }
-                var payload = JSON.parse(raw);
-                renderAll(payload);
-                return;
+                showError('No data. Expect #p= (compact) or #json= …'); return;
             }
-
-            // Demo fallback
-            if ((location.search||"").match(/(^|[?&])demo=1(&|$)/)) {
-                var sample = { eventName:"Demo Event", m:"Q1",
-                    t:{r:[111,222,333], b:[444,555,666]},
-                    r:{TotalPoints:96, A1:2, A2:1, A3:1, AlgaeRemoved:2, AlgaeProcessed:1},
-                    b:{TotalPoints:91, B1:1, C2:2, D3:1, E4:1} };
-                renderAll(sample); return;
+            if(frag.kind==='p'){
+                var bytes=b64urlToBytes(frag.val); var payload=decodePacketV1(bytes); renderAll(payload); return;
             }
-            showError("No data in URL. Use #json=… (or ?demo=1).");
-        } catch (err) {
-            showError((err && err.message) || String(err));
-        }
+            if(frag.kind==='json'){
+                var raw=decodeURIComponent(frag.val); var payload=JSON.parse(raw); renderAll(payload); return;
+            }
+            if(frag.kind==='lz'){
+                if(!window.LZString||!LZString.decompressFromEncodedURIComponent) throw new Error('LZString missing');
+                var raw=LZString.decompressFromEncodedURIComponent(frag.val); if(!raw) throw new Error('Failed to decode compressed data');
+                var payload=JSON.parse(raw); renderAll(payload); return;
+            }
+        }catch(err){ showError((err&&err.message)||String(err)); }
     })();
 </script>
 </body>
