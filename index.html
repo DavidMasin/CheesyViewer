@@ -1,183 +1,224 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cheesy Match Viewer</title>
-  <style>
-    :root{
-      --bg:#0b0d12; --card:#121621; --muted:#9db1c6; --line:#263041;
-      --red:#e24b4b; --blue:#4aa3ff; --text:#e7effa; --pill:#1a2130; --accent:#7bdcff;
-      --reefBg:#0f1420; --reefStroke:#2a3a56; --reefRing:#1a2335;
-    }
-    *{box-sizing:border-box}
-    body{ margin:0; background:radial-gradient(1200px 900px at 15% -10%, #172034 0, #0b0d12 60%), var(--bg); color:var(--text);
-          font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; padding:16px; }
-    header{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin:6px 0 16px}
-    h1{margin:0;font-size:22px;letter-spacing:.2px}
-    .muted{color:var(--muted);font-size:12px}
-    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-    .grid-wide{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}
-    .card{background:linear-gradient(180deg,#161b26 0,#10141e 100%);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-    .score{display:flex;align-items:baseline;gap:10px;font-size:38px;font-weight:700;margin:8px 0}
-    .score .red{color:var(--red)} .score .blue{color:var(--blue)}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{display:inline-flex;align-items:center;gap:8px;background:var(--pill);padding:6px 10px;border-radius:999px;border:1px solid var(--line)}
-    .tag{background:#0e1420;border:1px solid var(--line);padding:2px 8px;border-radius:999px;font-size:12px;color:#9fb6cd}
-    table{width:100%;border-collapse:collapse;margin-top:6px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-    th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}
-    th{color:#cfe3ff;background:#121a29}
-    td.red{color:var(--red);font-variant-numeric:tabular-nums}
-    td.blue{color:var(--blue);font-variant-numeric:tabular-nums}
-    pre{margin:0;padding:10px;background:#0d121b;border:1px solid var(--line);border-radius:10px;color:#cfe3ff;overflow:auto}
-    a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
-    #error{white-space:pre-wrap;background:#2a0f0f;border:1px solid #5c2424;color:#ffd9d9;padding:10px;border-radius:10px;margin:10px 0;display:none}
-
-    /* Reef SVG */
-    .reef-wrap{display:flex;flex-direction:column;gap:8px}
-    .reef-title{display:flex;align-items:center;gap:8px}
-    .reef-title .dot{width:10px;height:10px;border-radius:50%}
-    .reef{width:100%;height:auto;display:block;background:var(--reefBg);border-radius:14px;border:1px solid var(--line)}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
-    .legend .item{display:flex;align-items:center;gap:6px}
-    .legend .swatch{width:12px;height:12px;border-radius:3px;border:1px solid var(--line)}
-  </style>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Cheesy Viewer</title>
+    <style>
+        :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#e24b4b;--blue:#4aa3ff}
+        *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+        .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+        h1{margin:0 0 2px;font-size:26px} .muted{color:var(--muted)}
+        .grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr}
+        .card{background:#121826;border:1px solid #1b2433;border-radius:14px;padding:14px}
+        .teams{display:flex;gap:10px;flex-wrap:wrap}
+        .badge{display:inline-flex;align-items:center;gap:8px;background:#0e1420;border:1px solid #1b2433;border-radius:10px;padding:8px 10px}
+        .dot{width:10px;height:10px;border-radius:50%}
+        table{width:100%;border-collapse:collapse} th,td{padding:8px 10px;border-bottom:1px solid #1b2231} th{color:var(--muted);text-align:left;font-weight:600}
+        td.red{color:var(--red)} td.blue{color:var(--blue)}
+        .reef-wrap{padding:16px}
+        .reef-title{display:flex;align-items:center;gap:10px;margin:6px 2px 10px}
+        .legend{display:flex;gap:14px;margin-top:8px}
+        .legend .item{display:flex;gap:8px;align-items:center}
+        .legend .swatch{width:18px;height:10px;border-radius:4px;border:1px solid #0003}
+        .footer{margin-top:16px;font-size:12px;color:var(--muted)}
+        .error{color:#ff6565}
+        svg.reef{width:100%;height:auto;display:block;background:#0d121d;border:1px solid #1b2433;border-radius:12px}
+    </style>
 </head>
 <body>
-  <header>
-    <h1 id="matchTitle">Match</h1>
-    <div id="subtitle" class="muted"></div>
-  </header>
+<div class="wrap">
+    <h1 id="matchTitle">Cheesy Viewer</h1>
+    <div id="subtitle" class="muted">Awaiting data…</div>
 
-  <div id="error"></div>
+    <section class="grid" style="margin-top:16px">
+        <div class="card">
+            <div class="teams">
+                <div class="badge"><div class="dot" style="background:var(--red)"></div><div id="teamsRed">—</div></div>
+                <div class="badge"><div class="dot" style="background:var(--blue)"></div><div id="teamsBlue">—</div></div>
+            </div>
 
-  <div class="grid">
-    <section class="card">
-      <div class="muted">Score</div>
-      <div class="score"><span id="scoreRed" class="red">–</span><span class="muted">:</span><span id="scoreBlue" class="blue">–</span></div>
-      <div id="winner" class="muted"></div>
-      <div style="margin-top:8px"><span id="when" class="tag"></span></div>
+            <h3 style="margin:14px 2px 8px">Breakdown</h3>
+            <div class="card" style="padding:0">
+                <table>
+                    <thead><tr><th>Field</th><th class="red">RED</th><th class="blue">BLUE</th></tr></thead>
+                    <tbody id="breakdownBody"></tbody>
+                </table>
+            </div>
+
+            <div class="footer" id="when"></div>
+            <div class="footer" id="rawLink"></div>
+        </div>
+
+        <div class="card reef-wrap">
+            <div class="reef-title"><div class="dot" style="background:var(--red)"></div><div class="muted">RED Reef</div></div>
+            <svg id="reefRed" class="reef" viewBox="0 0 600 520" aria-label="Red reef visualization"></svg>
+            <div class="legend">
+                <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
+                <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
+                <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
+                <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
+                <div class="item"><div class="swatch" style="background:var(--red)"></div><div class="muted">Coral pieces</div></div>
+            </div>
+        </div>
     </section>
 
-    <section class="card">
-      <div class="muted">Alliances</div>
-      <div class="row" style="margin-top:6px"><span class="pill"><strong style="color:var(--red)">RED</strong><span id="teamsRed">—</span></span></div>
-      <div class="row" style="margin-top:6px"><span class="pill"><strong style="color:var(--blue)">BLUE</strong><span id="teamsBlue">—</span></span></div>
-    </section>
-
-    <section class="card">
-      <div class="muted">Breakdown (numeric keys)</div>
-      <table id="breakdown"><thead><tr><th>Metric</th><th class="red">Red</th><th class="blue">Blue</th></tr></thead><tbody></tbody></table>
-    </section>
-
-    <section class="card">
-      <div class="muted">Raw Data</div>
-      <div id="rawLink" class="muted" style="margin-top:6px">—</div>
-      <div class="muted" style="margin-top:8px">Tip: long-press to download the JSON or share this page; the URL already contains the match data.</div>
-    </section>
-  </div>
-
-  <section class="grid-wide" style="margin-top:12px;">
-    <div class="card reef-wrap">
-      <div class="reef-title"><div class="dot" style="background:var(--red)"></div><div class="muted">RED Reef</div></div>
-      <svg id="reefRed" class="reef" viewBox="0 0 600 520" aria-label="Red reef visualization"></svg>
-      <div class="legend">
-        <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
-        <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
-        <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
-        <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
-        <div class="item"><div class="swatch" style="background:var(--red)"></div><div class="muted">Coral pieces</div></div>
-      </div>
+    <div class="card reef-wrap" style="margin-top:16px">
+        <div class="reef-title"><div class="dot" style="background:var(--blue)"></div><div class="muted">BLUE Reef</div></div>
+        <svg id="reefBlue" class="reef" viewBox="0 0 600 520" aria-label="Blue reef visualization"></svg>
+        <div class="legend">
+            <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
+            <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
+            <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
+            <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
+            <div class="item"><div class="swatch" style="background:var(--blue)"></div><div class="muted">Coral pieces</div></div>
+        </div>
     </div>
-    <div class="card reef-wrap">
-      <div class="reef-title"><div class="dot" style="background:var(--blue)"></div><div class="muted">BLUE Reef</div></div>
-      <svg id="reefBlue" class="reef" viewBox="0 0 600 520" aria-label="Blue reef visualization"></svg>
-      <div class="legend">
-        <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
-        <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
-        <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
-        <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
-        <div class="item"><div class="swatch" style="background:var(--blue)"></div><div class="muted">Coral pieces</div></div>
-      </div>
-    </div>
-  </section>
+</div>
 
-  <script>
-    // LZString: decompressFromEncodedURIComponent (official, trimmed). NOTE: no stray characters after </script>
+<script>
+    // LZString decompressFromEncodedURIComponent (trimmed)
     var LZString=(function(){function o(o,r){if(!t[o]){t[o]={};for(var n=0;n<o.length;n++)t[o][o.charAt(n)]=n}return t[o][r]}var r=String.fromCharCode,n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",t={},e={decompressFromEncodedURIComponent:function(t){return null==t?"":""==t?null:(t=t.replace(/ /g,"+"),e._decompress(t.length,32,function(e){return o(n,t.charAt(e))}))},_decompress:function(o,n,t){var e,i,a,s,u,c,l,p=[],f=4,h=4,d=3,v="",g=[],m={val:t(0),position:n,index:1};for(i=0;i<3;i+=1)p[i]=i;for(a=0,s=Math.pow(2,2),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;switch(e=a){case 0:for(a=0,s=Math.pow(2,8),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;l=r(a);break;case 1:for(a=0,s=Math.pow(2,16),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;l=r(a);break;case 2:return""}for(p[3]=l,i=l,g.push(l);;){if(m.index>o)return"";for(a=0,s=Math.pow(2,d),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;switch(l=a){case 0:for(a=0,s=Math.pow(2,8),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;p[h++]=r(a),l=h-1,f--;break;case 1:for(a=0,s=Math.pow(2,16),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;p[h++]=r(a),l=h-1,f--;break;case 2:return g.join("")}if(0==f&&(f=Math.pow(2,d),d++),p[l])v=p[l];else{if(l!==h)return null;v=i+i.charAt(0)}g.push(v),p[h++]=i+v.charAt(0),i=v,0==--f&&(f=Math.pow(2,d),d++)}};return e})();
+</script>
 
+<script>
     // Utilities
     function byId(id){return document.getElementById(id)}
     function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
-    function pick(obj, path){try{var p=path.split('.'), a=obj; for(var i=0;i<p.length;i++){if(!a||a[p[i]]==null) return undefined; a=a[p[i]];} return a;}catch(e){return undefined}}
     function sumNumbers(obj){if(!obj||typeof obj!=="object") return null; var s=0, any=false; for(var k in obj){if(typeof obj[k]==="number"){s+=obj[k]; any=true}} return any?s:null}
 
-    // Parse #data=
-    function readPackedFromHash(){ var h=location.hash||""; var idx=h.indexOf("data="); if(idx===-1) return null; var packed=h.substring(idx+5); var a=packed.indexOf("&"); if(a!==-1) packed=packed.substring(0,a); return packed; }
+    // Parse #d= (new) or #data= (compat)
+    function readPackedFromHash(){
+        var h=location.hash||"";
+        var keys=["d=","data="];
+        for(var i=0;i<keys.length;i++){
+            var idx=h.indexOf(keys[i]); if(idx!==-1){
+                var packed=h.substring(idx+keys[i].length);
+                var a=packed.indexOf("&"); if(a!==-1) packed=packed.substring(0,a);
+                return packed;
+            }
+        }
+        return null;
+    }
 
-    // Reef extraction → counts {A:{1..4},..F}
+    // --- Reef helpers (extract counts A..F × L1..4) ---
     function emptyCounts(){ var faces=['A','B','C','D','E','F'], c={}; for(var i=0;i<faces.length;i++){ c[faces[i]]={1:0,2:0,3:0,4:0}; } return c; }
     function addCount(map, face, level, delta){ if(!map||!face||!map[face]) return; var lv=parseInt(level,10); if(isNaN(lv)||lv<1||lv>4) return; map[face][lv]+= (delta||1); }
     function isFace(k){return /^[A-F]$/.test(k)}
     function isFaceLevel(k){return /^[A-F][1-4]$/.test(k)}
-    function extractReefCounts(score){ var out=emptyCounts(); if(!score||typeof score!=="object") return out;
-      for(var k in score){ if(isFaceLevel(k)){ var v=score[k]; if(typeof v==="number"&&v>0) addCount(out,k[0],k[1],v); else if(v===true) addCount(out,k[0],k[1],1); }}
-      for(var fk in score){ if(isFace(fk)){ var v=score[fk]; if(Array.isArray(v)){ for(var i=0;i<Math.min(4,v.length);i++){ if(typeof v[i]==="number") addCount(out,fk,i+1,v[i]); }} else if(v&&typeof v==="object"){ for(var lk in v){ var lv=lk.replace(/[^1-4]/g,""); if(lv){ var n=v[lk]; if(typeof n==="number"&&n>0) addCount(out,fk,lv,n); else if(n===true) addCount(out,fk,lv,1); } } } } }
-      function walk(x){ if(!x) return; if(Array.isArray(x)){ for(var i=0;i<x.length;i++){ var it=x[i]; if(typeof it==="string"&&isFaceLevel(it)) addCount(out,it[0],it[1],1); else if(it&&typeof it==="object") walk(it); } }
-        else if(typeof x==="object"){ for(var kk in x){ var vv=x[kk]; if(typeof vv==="string"&&isFaceLevel(vv)) addCount(out,vv[0],vv[1],1); else walk(vv);} } }
-      var coralKey=null, prefer=['Coral','CoralGrid','CoralPlacement','Reef','ReefGrid','Placements','Locations','Scored'];
-      for(var i=0;i<prefer.length;i++){ if(score[prefer[i]]!=null){ coralKey=prefer[i]; break; } }
-      if(coralKey){ walk(score[coralKey]); } else { walk(score); }
-      return out; }
-
-    // Reef SVG renderer
-    function renderReef(svgId, counts, pieceColor){ var svg=byId(svgId); if(!svg) return; while(svg.firstChild) svg.removeChild(svg.firstChild);
-      var w=600,h=520,cx=w/2,cy=h/2+10,R=200; var bg=document.createElementNS('http://www.w3.org/2000/svg','rect'); bg.setAttribute('x',0);bg.setAttribute('y',0);bg.setAttribute('width',w);bg.setAttribute('height',h);bg.setAttribute('fill','transparent'); svg.appendChild(bg);
-      for(var i=1;i<=4;i++){ var r=R*(0.3+0.17*(i-1)); var circle=document.createElementNS('http://www.w3.org/2000/svg','circle'); circle.setAttribute('cx',cx);circle.setAttribute('cy',cy);circle.setAttribute('r',r); circle.setAttribute('fill','none'); circle.setAttribute('stroke','var(--reefRing)'); circle.setAttribute('stroke-width',1.5); svg.appendChild(circle); }
-      for(var s=0;s<6;s++){ var ang=(-90+s*60)*Math.PI/180; var x=cx+R*0.85*Math.cos(ang), y=cy+R*0.85*Math.sin(ang); var line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',cx);line.setAttribute('y1',cy);line.setAttribute('x2',x);line.setAttribute('y2',y); line.setAttribute('stroke','var(--reefStroke)'); line.setAttribute('stroke-width','1'); svg.appendChild(line); }
-      var faces=['A','B','C','D','E','F']; for(var f=0;f<6;f++){ var a=(-90+f*60)*Math.PI/180; var labelR=R*0.98; var lx=cx+labelR*Math.cos(a), ly=cy+labelR*Math.sin(a); var t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',lx); t.setAttribute('y',ly); t.setAttribute('fill','#cfe3ff'); t.setAttribute('font-size','14'); t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle'); t.textContent=faces[f]; svg.appendChild(t); }
-      function placeDots(faceIdx, level, count){ if(!count||count<=0) return; var base=(-90+faceIdx*60)*Math.PI/180; var r=R*(0.28+0.17*(level-1)); var slots=Math.max(1,Math.min(4,count)); var spread=(slots>1?10*Math.PI/180:0);
-        for(var i=0;i<count;i++){ var k=(slots===1?0:(i-(count-1)/2)/(slots-1)); var ang=base+k*spread; var x=cx+r*Math.cos(ang), y=cy+r*Math.sin(ang); var dot=document.createElementNS('http://www.w3.org/2000/svg','circle'); dot.setAttribute('cx',x); dot.setAttribute('cy',y); dot.setAttribute('r',6); dot.setAttribute('fill',pieceColor); dot.setAttribute('opacity','0.95'); dot.setAttribute('stroke','#000'); dot.setAttribute('stroke-width','0.5'); svg.appendChild(dot); } }
-      var faceIndex={A:0,B:1,C:2,D:3,E:4,F:5}; for(var fk in counts){ var idx=faceIndex[fk]; if(idx==null) continue; var lv=counts[fk]; for(var L=1;L<=4;L++){ placeDots(idx,L,lv[L]||0); } }
+    function extractReefCounts(score){
+        var out=emptyCounts(); if(!score||typeof score!=="object") return out;
+        for(var k in score){ if(isFaceLevel(k)){ var v=score[k]; if(typeof v==="number"&&v>0) addCount(out,k[0],k[1],v); else if(v===true) addCount(out,k[0],k[1],1); }}
+        for(var fk in score){ if(isFace(fk)){ var v=score[fk]; if(Array.isArray(v)){ for(var i=0;i<Math.min(4,v.length);i++){ if(typeof v[i]==="number") addCount(out,fk,i+1,v[i]); }}
+        else if(v&&typeof v==="object"){ for(var lk in v){ var lv=lk.replace(/[^1-4]/g,""); if(lv){ var n=v[lk]; if(typeof n==="number"&&n>0) addCount(out,fk,lv,n); else if(n===true) addCount(out,fk,lv,1); } } } } }
+        function walk(x){ if(!x) return; if(Array.isArray(x)){ for(var i=0;i<x.length;i++){ var it=x[i]; if(typeof it==="string"&&isFaceLevel(it)) addCount(out,it[0],it[1],1); else if(it&&typeof it==="object") walk(it); } }
+        else if(typeof x==="object"){ for(var kk in x){ var vv=x[kk]; if(typeof vv==="string"&&isFaceLevel(vv)) addCount(out,vv[0],vv[1],1); else walk(vv); } } }
+        walk(score);
+        return out;
     }
 
-    function showError(msg){ var el=byId('error'); if(el){ el.style.display='block'; el.textContent=msg; } }
+    // Draw reef as 3 rings (levels), 6 faces
+    function renderReef(svgId, counts, strokeColor){
+        var svg=byId(svgId); svg.innerHTML="";
+        var W=600,H=520,CX=W/2,CY=H/2;
+        var R=[120,180,240,280]; // L1..L4 radii
+        function slicePath(cx,cy,r0,r1,a0,a1){
+            function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];}
+            var p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0);
+            return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`;
+        }
+        var faces="ABCDEF";
+        for(var fi=0; fi<6; fi++){
+            var a0 = (Math.PI*2)*fi/6 - Math.PI/2, a1=(Math.PI*2)*(fi+1)/6 - Math.PI/2;
+            for(var lv=1; lv<=4; lv++){
+                var v = counts[faces[fi]][lv] || 0;
+                var r0=R[lv-1]-(lv===1?25:20), r1=R[lv-1]+(lv===4?25:20);
+                var p = document.createElementNS("http://www.w3.org/2000/svg","path");
+                p.setAttribute("d",slicePath(CX,CY,r0,r1,a0,a1));
+                var shade = [0.94,0.90,0.86,0.82][lv-1]; // lighter → darker
+                p.setAttribute("fill",`rgba(90,150,255,${(1-shade).toFixed(2)})`);
+                p.setAttribute("stroke","#0b1220"); p.setAttribute("stroke-width","1.2");
+                svg.appendChild(p);
 
-    // Render entrypoint
+                if(v>0){
+                    var midr=(r0+r1)/2, mida=(a0+a1)/2;
+                    var tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida);
+                    var t = document.createElementNS("http://www.w3.org/2000/svg","text");
+                    t.setAttribute("x",tx); t.setAttribute("y",ty);
+                    t.setAttribute("text-anchor","middle"); t.setAttribute("dominant-baseline","middle");
+                    t.setAttribute("font-size","16"); t.textContent=String(v);
+                    svg.appendChild(t);
+                }
+            }
+        }
+    }
+
     function renderAll(payload){
-      var ev=payload.eventName||''; var lite=(payload.match&&payload.match.lite)||{}; var matchName=lite.longName||'Match';
-      setText('matchTitle',matchName); setText('subtitle', ev + (payload.generated? ' • '+payload.generated: ''));
-      var result=payload.result||{}; var red=pick(result,'RedScore')||pick(result,'red')||{}; var blue=pick(result,'BlueScore')||pick(result,'blue')||{};
-      var rt=(typeof red.TotalPoints==='number')?red.TotalPoints:sumNumbers(red); var bt=(typeof blue.TotalPoints==='number')?blue.TotalPoints:sumNumbers(blue);
-      setText('scoreRed', (rt!=null?rt:'–')); setText('scoreBlue',(bt!=null?bt:'–'));
-      setText('winner', (typeof rt==='number'&&typeof bt==='number')?(rt>bt?'Winner: RED':(bt>rt?'Winner: BLUE':'Tie')):'');
-      var tr=(payload.teams&&payload.teams.red||[]).filter(Boolean).join(' '), tb=(payload.teams&&payload.teams.blue||[]).filter(Boolean).join(' ');
-      setText('teamsRed', tr||'—'); setText('teamsBlue', tb||'—');
-      // Breakdown
-      (function(){ var tbody=document.querySelector('#breakdown tbody'); if(!tbody) return; tbody.innerHTML=''; var keys={},k; for(k in red){ if(typeof red[k]==='number') keys[k]=1; } for(k in blue){ if(typeof blue[k]==='number') keys[k]=1; } var list=Object.keys(keys).sort(); for(var i=0;i<list.length;i++){ var key=list[i], rv=red[key], bv=blue[key]; var row=document.createElement('tr'); row.innerHTML='<td>'+key+'</td><td class="red">'+(rv!=null?rv:'')+'</td><td class="blue">'+(bv!=null?bv:'')+'</td>'; tbody.appendChild(row); } })();
-      // Reef
-      var countsRed=extractReefCounts(red), countsBlue=extractReefCounts(blue);
-      var redColor=getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||'#e24b4b';
-      var blueColor=getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()||'#4aa3ff';
-      renderReef('reefRed', countsRed, redColor); renderReef('reefBlue', countsBlue, blueColor);
-      // Raw download
-      var stamp=payload.generated?new Date(payload.generated):new Date(); setText('when','Generated '+stamp.toLocaleString());
-      var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="cheesy_match.json">Download raw JSON</a>';
+        // Support minimal (#d=) and legacy full (#data=) payloads
+        var red = payload.r || (payload.result && (payload.result.RedScore || payload.result.red)) || {};
+        var blue= payload.b || (payload.result && (payload.result.BlueScore|| payload.result.blue)) || {};
+        var title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || "Match";
+
+        setText('matchTitle', title + (payload.eventName ? " — " + payload.eventName : ""));
+        setText('subtitle', 'Reef + breakdown');
+
+        // Teams
+        var rTeams=(payload.t && payload.t.r) || (payload.teams && payload.teams.red) || [];
+        var bTeams=(payload.t && payload.t.b) || (payload.teams && payload.teams.blue) || [];
+        setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', bTeams.join(' • '));
+
+        // Breakdown table: list all numeric keys
+        (function(){
+            var tbody=byId('breakdownBody'); tbody.innerHTML='';
+            var keys={},k;
+            for(k in red){ if(typeof red[k]==='number') keys[k]=1; }
+            for(k in blue){ if(typeof blue[k]==='number') keys[k]=1; }
+            var list=Object.keys(keys).sort();
+            for(var i=0;i<list.length;i++){
+                var key=list[i], rv=red[key], bv=blue[key];
+                var row=document.createElement('tr');
+                row.innerHTML='<td>'+key+'</td><td class="red">'+(rv!=null?rv:'')+'</td><td class="blue">'+(bv!=null?bv:'')+'</td>';
+                tbody.appendChild(row);
+            }
+        })();
+
+        // Reef
+        var countsRed=extractReefCounts(red), countsBlue=extractReefCounts(blue);
+        var redColor=getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||'#e24b4b';
+        var blueColor=getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()||'#4aa3ff';
+        renderReef('reefRed', countsRed, redColor);
+        renderReef('reefBlue', countsBlue, blueColor);
+
+        // Footer
+        var stamp=payload.generated?new Date(payload.generated):new Date();
+        setText('when','Generated '+stamp.toLocaleString());
+        var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+        var url=URL.createObjectURL(blob);
+        byId('rawLink').innerHTML='<a href="'+url+'" download="cheesy_match.json">Download raw JSON</a>';
     }
 
     // MAIN
     (function(){
-      try{
-        var packed=readPackedFromHash();
-        if(packed){ var raw=LZString.decompressFromEncodedURIComponent(packed); if(!raw){ showError('Failed to decode payload.'); return; } var payload=JSON.parse(raw); renderAll(payload); return; }
-        // Test case (demo mode): visit with ?demo=1 to render a sample match
-        var q=location.search||''; if(/(^|[?&])demo=1(&|$)/.test(q)){
-          var sample={ eventName:"Demo Event", generated:new Date().toISOString(), match:{ lite:{ longName:"Q1" } }, teams:{ red:[111,222,333], blue:[444,555,666] }, result:{ RedScore:{TotalPoints:96, A1:2, A2:1, A3:1, B2:1, C4:1}, BlueScore:{TotalPoints:91, B1:1, C2:2, D3:1, E4:1} } };
-          renderAll(sample); return;
+        try{
+            var packed=readPackedFromHash();
+            if(packed){
+                var raw=LZString.decompressFromEncodedURIComponent(packed);
+                if(!raw){ byId('subtitle').innerHTML='<span class="error">Failed to decode payload.</span>'; return; }
+                var payload=JSON.parse(raw);
+                renderAll(payload); return;
+            }
+            // Demo mode
+            var q=location.search||'';
+            if(/(^|[?&])demo=1(&|$)/.test(q)){
+                var sample={v:1, m:"Q1", eventName:"Demo Event", t:{r:[111,222,333], b:[444,555,666]}, r:{TotalPoints:96, A1:2, A2:1, A3:1, B2:1, C4:1, AlgaeRemoved:2, AlgaeProcessed:1}, b:{TotalPoints:91, B1:1, C2:2, D3:1, E4:1, AlgaeRemoved:1, AlgaeProcessed:2}};
+                renderAll(sample); return;
+            }
+            setText('matchTitle','No data');
+            setText('subtitle','URL must include #d=... (or legacy #data=...) — or append ?demo=1');
+        }catch(err){
+            byId('subtitle').innerHTML='<span class="error">'+String((err&&err.message)||err)+'</span>';
         }
-        setText('matchTitle','No data'); setText('subtitle','URL must include #data=... or append ?demo=1');
-      }catch(err){ showError(String((err&&err.message)||err)); }
     })();
-  </script>
+</script>
 </body>
 </html>
