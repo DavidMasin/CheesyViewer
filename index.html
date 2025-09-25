@@ -24,6 +24,7 @@
         .footer{margin-top:16px;font-size:12px;color:var(--muted)}
         .error{color:#ff6565}
         svg.reef{width:100%;height:auto;display:block;background:#0d121d;border:1px solid #1b2433;border-radius:12px}
+        a{color:#b9dcff}
     </style>
 </head>
 <body>
@@ -76,29 +77,126 @@
     </div>
 </div>
 
+<!-- Safe, pretty-printed LZString decoder (only decompressFromEncodedURIComponent) -->
 <script>
-    // LZString decompressFromEncodedURIComponent (trimmed)
-    var LZString=(function(){function o(o,r){if(!t[o]){t[o]={};for(var n=0;n<o.length;n++)t[o][o.charAt(n)]=n}return t[o][r]}var r=String.fromCharCode,n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",t={},e={decompressFromEncodedURIComponent:function(t){return null==t?"":""==t?null:(t=t.replace(/ /g,"+"),e._decompress(t.length,32,function(e){return o(n,t.charAt(e))}))},_decompress:function(o,n,t){var e,i,a,s,u,c,l,p=[],f=4,h=4,d=3,v="",g=[],m={val:t(0),position:n,index:1};for(i=0;i<3;i+=1)p[i]=i;for(a=0,s=Math.pow(2,2),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;switch(e=a){case 0:for(a=0,s=Math.pow(2,8),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;l=r(a);break;case 1:for(a=0,s=Math.pow(2,16),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;l=r(a);break;case 2:return""}for(p[3]=l,i=l,g.push(l);;){if(m.index>o)return"";for(a=0,s=Math.pow(2,d),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;switch(l=a){case 0:for(a=0,s=Math.pow(2,8),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;p[h++]=r(a),l=h-1,f--;break;case 1:for(a=0,s=Math.pow(2,16),u=1;u!=s;)c=m.val&m.position,m.position>>=1,0==m.position&&(m.position=n,m.val=t(m.index++)),a|=(c>0?1:0)*u,u<<=1;p[h++]=r(a),l=h-1,f--;break;case 2:return g.join("")}if(0==f&&(f=Math.pow(2,d),d++),p[l])v=p[l];else{if(l!==h)return null;v=i+i.charAt(0)}g.push(v),p[h++]=i+v.charAt(0),i=v,0==--f&&(f=Math.pow(2,d),d++)}};return e})();
+    window.LZString = window.LZString || (function(){
+        var f = String.fromCharCode;
+        var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+        var baseReverseDic = {};
+        function getBaseValue(alphabet, character) {
+            if (!baseReverseDic[alphabet]) {
+                baseReverseDic[alphabet] = {};
+                for (var i=0; i<alphabet.length; i++) baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+            }
+            return baseReverseDic[alphabet][character];
+        }
+        function _decompress(length, resetValue, getNextValue) {
+            var dictionary = [], enlargeIn = 4, dictSize = 4, numBits = 3,
+                entry = "", result = [], i, w, bits, resb, maxpower, power,
+                data = { val: getNextValue(0), position: resetValue, index: 1 };
+            for (i=0; i<3; i+=1) dictionary[i] = i;
+
+            bits = 0; maxpower = Math.pow(2,2); power = 1;
+            while (power != maxpower) {
+                resb = data.val & data.position; data.position >>= 1;
+                if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+            }
+            switch (bits) {
+                case 0:
+                    bits = 0; maxpower = Math.pow(2,8); power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position; data.position >>= 1;
+                        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                        bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+                    }
+                    entry = f(bits); break;
+                case 1:
+                    bits = 0; maxpower = Math.pow(2,16); power = 1;
+                    while (power != maxpower) {
+                        resb = data.val & data.position; data.position >>= 1;
+                        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                        bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+                    }
+                    entry = f(bits); break;
+                case 2: return "";
+            }
+            dictionary[3] = entry; var w = entry; result.push(entry);
+
+            while (true) {
+                if (data.index > length) return "";
+                bits = 0; maxpower = Math.pow(2, numBits); power = 1;
+                while (power != maxpower) {
+                    resb = data.val & data.position; data.position >>= 1;
+                    if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                    bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+                }
+                var cnum = bits, str;
+                switch (cnum) {
+                    case 0:
+                        bits = 0; maxpower = Math.pow(2,8); power = 1;
+                        while (power != maxpower) {
+                            resb = data.val & data.position; data.position >>= 1;
+                            if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                            bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+                        }
+                        dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break;
+                    case 1:
+                        bits = 0; maxpower = Math.pow(2,16); power = 1;
+                        while (power != maxpower) {
+                            resb = data.val & data.position; data.position >>= 1;
+                            if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                            bits |= (resb>0 ? 1 : 0) * power; power <<= 1;
+                        }
+                        dictionary[dictSize++] = f(bits); cnum = dictSize - 1; enlargeIn--; break;
+                    case 2: return result.join("");
+                }
+                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+                if (dictionary[cnum]) str = dictionary[cnum];
+                else { if (cnum === dictSize) str = w + w.charAt(0); else return null; }
+                result.push(str);
+                dictionary[dictSize++] = w + str.charAt(0);
+                enlargeIn--; w = str;
+                if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+            }
+        }
+        return {
+            decompressFromEncodedURIComponent: function (input) {
+                if (input == null) return "";
+                if (input === "") return null;
+                input = input.replace(/ /g, "+");
+                return _decompress(input.length, 32, function(i){
+                    return getBaseValue(keyStrUriSafe, input.charAt(i));
+                });
+            }
+        };
+    })();
 </script>
 
 <script>
     // Utilities
     function byId(id){return document.getElementById(id)}
     function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
-    function sumNumbers(obj){if(!obj||typeof obj!=="object") return null; var s=0, any=false; for(var k in obj){if(typeof obj[k]==="number"){s+=obj[k]; any=true}} return any?s:null}
 
-    // Parse #d= (new) or #data= (compat)
+    // Parse #json= (preferred), #d= / #data= (compressed)
     function readPackedFromHash(){
-        var h=location.hash||"";
-        var keys=["d=","data="];
-        for(var i=0;i<keys.length;i++){
-            var idx=h.indexOf(keys[i]); if(idx!==-1){
-                var packed=h.substring(idx+keys[i].length);
-                var a=packed.indexOf("&"); if(a!==-1) packed=packed.substring(0,a);
-                return packed;
+        var h = location.hash || "";
+        var keys = ["json=", "d=", "data="]; // try plain JSON first
+        for (var i=0;i<keys.length;i++){
+            var k = keys[i], idx = h.indexOf(k);
+            if (idx !== -1){
+                var v = h.substring(idx + k.length);
+                var a = v.indexOf("&"); if (a !== -1) v = v.substring(0, a);
+                return { key: k.slice(0,-1), value: v };
             }
         }
         return null;
+    }
+
+    function showError(msg){
+        var el = document.getElementById("subtitle");
+        if (el) el.innerHTML = '<span class="error">'+msg+'</span>';
+        try { console.error("[VIEWER]", msg); } catch(_){ }
     }
 
     // --- Reef helpers (extract counts A..F × L1..4) ---
@@ -117,15 +215,15 @@
         return out;
     }
 
-    // Draw reef as 3 rings (levels), 6 faces
-    function renderReef(svgId, counts, strokeColor){
-        var svg=byId(svgId); svg.innerHTML="";
+    // Draw reef as 4 rings (L1..L4), 6 faces
+    function renderReef(svgId, counts){
+        var svg=byId(svgId); if(!svg) return; svg.innerHTML="";
         var W=600,H=520,CX=W/2,CY=H/2;
         var R=[120,180,240,280]; // L1..L4 radii
         function slicePath(cx,cy,r0,r1,a0,a1){
             function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];}
             var p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0);
-            return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`;
+            return "M"+p0[0]+","+p0[1]+" A"+r0+","+r0+" 0 0 1 "+p1[0]+","+p1[1]+" L"+p2[0]+","+p2[1]+" A"+r1+","+r1+" 0 0 0 "+p3[0]+","+p3[1]+" Z";
         }
         var faces="ABCDEF";
         for(var fi=0; fi<6; fi++){
@@ -135,11 +233,10 @@
                 var r0=R[lv-1]-(lv===1?25:20), r1=R[lv-1]+(lv===4?25:20);
                 var p = document.createElementNS("http://www.w3.org/2000/svg","path");
                 p.setAttribute("d",slicePath(CX,CY,r0,r1,a0,a1));
-                var shade = [0.94,0.90,0.86,0.82][lv-1]; // lighter → darker
-                p.setAttribute("fill",`rgba(90,150,255,${(1-shade).toFixed(2)})`);
+                var shades=[0.94,0.90,0.86,0.82];
+                p.setAttribute("fill","rgba(90,150,255,"+(1-shades[lv-1]).toFixed(2)+")");
                 p.setAttribute("stroke","#0b1220"); p.setAttribute("stroke-width","1.2");
                 svg.appendChild(p);
-
                 if(v>0){
                     var midr=(r0+r1)/2, mida=(a0+a1)/2;
                     var tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida);
@@ -154,10 +251,10 @@
     }
 
     function renderAll(payload){
-        // Support minimal (#d=) and legacy full (#data=) payloads
+        // Support minimal (#d/#data: r/b/m/t) and legacy full (result.RedScore/BlueScore)
         var red = payload.r || (payload.result && (payload.result.RedScore || payload.result.red)) || {};
         var blue= payload.b || (payload.result && (payload.result.BlueScore|| payload.result.blue)) || {};
-        var title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || "Match";
+        var title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || "Match";
 
         setText('matchTitle', title + (payload.eventName ? " — " + payload.eventName : ""));
         setText('subtitle', 'Reef + breakdown');
@@ -165,13 +262,12 @@
         // Teams
         var rTeams=(payload.t && payload.t.r) || (payload.teams && payload.teams.red) || [];
         var bTeams=(payload.t && payload.t.b) || (payload.teams && payload.teams.blue) || [];
-        setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', bTeams.join(' • '));
+        setText('teamsRed', (rTeams||[]).join(' • ')); setText('teamsBlue', (bTeams||[]).join(' • '));
 
-        // Breakdown table: list all numeric keys
+        // Breakdown table: list all numeric keys present in either side
         (function(){
-            var tbody=byId('breakdownBody'); tbody.innerHTML='';
-            var keys={},k;
-            for(k in red){ if(typeof red[k]==='number') keys[k]=1; }
+            var tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML='';
+            var keys={},k; for(k in red){ if(typeof red[k]==='number') keys[k]=1; }
             for(k in blue){ if(typeof blue[k]==='number') keys[k]=1; }
             var list=Object.keys(keys).sort();
             for(var i=0;i<list.length;i++){
@@ -183,40 +279,47 @@
         })();
 
         // Reef
-        var countsRed=extractReefCounts(red), countsBlue=extractReefCounts(blue);
-        var redColor=getComputedStyle(document.documentElement).getPropertyValue('--red').trim()||'#e24b4b';
-        var blueColor=getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()||'#4aa3ff';
-        renderReef('reefRed', countsRed, redColor);
-        renderReef('reefBlue', countsBlue, blueColor);
+        renderReef('reefRed',  extractReefCounts(red));
+        renderReef('reefBlue', extractReefCounts(blue));
 
         // Footer
-        var stamp=payload.generated?new Date(payload.generated):new Date();
-        setText('when','Generated '+stamp.toLocaleString());
-        var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-        var url=URL.createObjectURL(blob);
-        byId('rawLink').innerHTML='<a href="'+url+'" download="cheesy_match.json">Download raw JSON</a>';
+        try {
+            var stamp=payload.generated?new Date(payload.generated):new Date();
+            setText('when','Generated '+stamp.toLocaleString());
+            var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+            var url=URL.createObjectURL(blob);
+            byId('rawLink').innerHTML='<a href="'+url+'" download="cheesy_match.json">Download raw JSON</a>';
+        } catch(_){ }
     }
 
-    // MAIN
-    (function(){
+    (function main(){
         try{
-            var packed=readPackedFromHash();
-            if(packed){
-                var raw=LZString.decompressFromEncodedURIComponent(packed);
-                if(!raw){ byId('subtitle').innerHTML='<span class="error">Failed to decode payload.</span>'; return; }
-                var payload=JSON.parse(raw);
-                renderAll(payload); return;
+            var packed = readPackedFromHash();
+            if (packed){
+                var raw;
+                if (packed.key === "json"){
+                    raw = decodeURIComponent(packed.value);
+                } else {
+                    if (!window.LZString || !LZString.decompressFromEncodedURIComponent)
+                        throw new Error("LZString not available to decode");
+                    raw = LZString.decompressFromEncodedURIComponent(packed.value);
+                    if (!raw) throw new Error("Failed to decode compressed data");
+                }
+                var payload = JSON.parse(raw);
+                renderAll(payload);
+                return;
             }
-            // Demo mode
-            var q=location.search||'';
-            if(/(^|[?&])demo=1(&|$)/.test(q)){
-                var sample={v:1, m:"Q1", eventName:"Demo Event", t:{r:[111,222,333], b:[444,555,666]}, r:{TotalPoints:96, A1:2, A2:1, A3:1, B2:1, C4:1, AlgaeRemoved:2, AlgaeProcessed:1}, b:{TotalPoints:91, B1:1, C2:2, D3:1, E4:1, AlgaeRemoved:1, AlgaeProcessed:2}};
+            // Demo fallback
+            if ((location.search||"").match(/(^|[?&])demo=1(&|$)/)) {
+                var sample = { eventName:"Demo Event", m:"Q1",
+                    t:{r:[111,222,333], b:[444,555,666]},
+                    r:{TotalPoints:96, A1:2, A2:1, A3:1, AlgaeRemoved:2, AlgaeProcessed:1},
+                    b:{TotalPoints:91, B1:1, C2:2, D3:1, E4:1} };
                 renderAll(sample); return;
             }
-            setText('matchTitle','No data');
-            setText('subtitle','URL must include #d=... (or legacy #data=...) — or append ?demo=1');
-        }catch(err){
-            byId('subtitle').innerHTML='<span class="error">'+String((err&&err.message)||err)+'</span>';
+            showError("No data in URL. Use #json=… (or ?demo=1).");
+        } catch (err) {
+            showError((err && err.message) || String(err));
         }
     })();
 </script>
