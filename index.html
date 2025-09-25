@@ -1,0 +1,193 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cheesy Match Viewer</title>
+<style>
+    body { font: 16px system-ui, Arial, Segoe UI, sans-serif; margin: 16px; }
+    header { margin-bottom: 12px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+    .score { font-size: 36px; margin: 6px 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:12px; background:#eee; margin-right:6px; }
+    .small { opacity:.7; font-size: 12px; }
+    .red { color:#b00; } .blue { color:#05c; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+</style>
+
+<header>
+    <h1 id="title">Match</h1>
+    <div class="small" id="subtitle"></div>
+</header>
+
+<div class="grid">
+    <div class="card">
+        <div class="small">Score</div>
+        <div class="score"><span id="score-red" class="red">–</span> : <span id="score-blue" class="blue">–</span></div>
+        <div class="small" id="winner"></div>
+    </div>
+
+    <div class="card">
+        <div class="small">Alliances</div>
+        <div><span class="pill red" id="teams-red"></span></div>
+        <div><span class="pill blue" id="teams-blue"></span></div>
+    </div>
+
+    <div class="card">
+        <div class="small">Breakdown</div>
+        <table id="breakdown"><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+        <div class="small">Details</div>
+        <div class="mono small" id="raw-link"></div>
+    </div>
+</div>
+
+<section class="card" style="margin-top:12px;">
+    <div class="small">Field Map (if provided)</div>
+    <div id="field-map"></div>
+</section>
+
+<script>
+    /* Minimal LZ-String decoder (matching your arena JS). Paste the same lib here. */
+    const LZString = (function(){ /* minified version with decompressFromEncodedURIComponent */
+// — paste the decompress function here —
+        return {decompressFromEncodedURIComponent: function(s){/* ... */}}
+    })();
+
+    function pickTotal(score) {
+        // Generic heuristic: many seasons expose "TotalPoints" or we sum known ints.
+        if (!score || typeof score !== 'object') return null;
+        if ('TotalPoints' in score && typeof score.TotalPoints === 'number') return score.TotalPoints;
+        // Sum ints in root
+        let sum = 0, any=false;
+        for (const [k,v] of Object.entries(score)) {
+            if (typeof v === 'number') { sum += v; any=true; }
+        }
+        return any ? sum : null;
+    }
+
+    function renderBreakdown(redScore, blueScore) {
+        const tbody = document.querySelector("#breakdown tbody");
+        tbody.innerHTML = "";
+        if (!redScore || !blueScore) return;
+
+        // Show keys that are numbers on both sides (common buckets)
+        const keys = Array.from(new Set([...Object.keys(redScore), ...Object.keys(blueScore)]));
+        for (const k of keys) {
+            const rv = redScore[k], bv = blueScore[k];
+            if (typeof rv === "number" && typeof bv === "number") {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${k}</td><td class="red">${rv}</td><td class="blue">${bv}</td>`;
+                tbody.appendChild(tr);
+            }
+        }
+    }
+
+    function renderFieldMap(result) {
+        // If your season exposes per-location scoring (e.g., coral grid, algae bins),
+        // they often appear as arrays/objects inside the score. We try to find them.
+        const mapDiv = document.getElementById("field-map");
+        mapDiv.innerHTML = "";
+
+        const tryKeys = [
+            "Grid", "CoralGrid", "AlgaeGrid", "Locations", "Placement", "Scored", "Rungs", "Reef", "Cage"
+        ];
+
+        function firstDeep(obj, keys) {
+            if (!obj || typeof obj !== 'object') return null;
+            for (const k of keys) {
+                if (k in obj && obj[k]) return obj[k];
+            }
+            for (const v of Object.values(obj)) {
+                if (v && typeof v === 'object') {
+                    const r = firstDeep(v, keys);
+                    if (r) return r;
+                }
+            }
+            return null;
+        }
+
+        const red = result && result.RedScore;
+        const blue = result && result.BlueScore;
+        const redMap = firstDeep(red, tryKeys);
+        const blueMap = firstDeep(blue, tryKeys);
+
+        function pre(obj) {
+            const el = document.createElement("pre");
+            el.className = "mono small";
+            el.textContent = JSON.stringify(obj, null, 2);
+            return el;
+        }
+
+        if (redMap || blueMap) {
+            const wrap = document.createElement("div");
+            wrap.className = "grid";
+            const rCard = document.createElement("div"); rCard.className = "card";
+            const bCard = document.createElement("div"); bCard.className = "card";
+            rCard.innerHTML = "<div class='small red'>RED map</div>";
+            bCard.innerHTML = "<div class='small blue'>BLUE map</div>";
+            rCard.appendChild(pre(redMap || {}));
+            bCard.appendChild(pre(blueMap || {}));
+            wrap.appendChild(rCard); wrap.appendChild(bCard);
+            mapDiv.appendChild(wrap);
+        } else {
+            mapDiv.innerHTML = "<div class='small'>No per-location placement data found in result payload.</div>";
+        }
+    }
+
+    (function init() {
+        const hash = location.hash || "";
+        const m = hash.match(/[#&]data=([^&]+)/);
+        if (!m) {
+            document.getElementById("title").textContent = "No data in URL";
+            document.getElementById("subtitle").textContent = "Expected #data=… in the URL fragment";
+            return;
+        }
+        const packed = decodeURIComponent(m[1]);
+        const raw = LZString.decompressFromEncodedURIComponent(packed);
+        if (!raw) {
+            document.getElementById("title").textContent = "Failed to decode payload";
+            return;
+        }
+        const payload = JSON.parse(raw);
+
+        const ev = payload.eventName || "";
+        const ml = payload.match && payload.match.lite;
+        const matchName = (ml && ml.longName) || "Match";
+
+        document.getElementById("title").textContent = matchName;
+        document.getElementById("subtitle").textContent = ev + (payload.generated ? " • " + payload.generated : "");
+
+        const res = payload.result || {};
+        const redScore = res.RedScore || res.red || {};
+        const blueScore = res.BlueScore || res.blue || {};
+
+        const rt = pickTotal(redScore);
+        const bt = pickTotal(blueScore);
+        document.getElementById("score-red").textContent = (rt ?? "–");
+        document.getElementById("score-blue").textContent = (bt ?? "–");
+
+        let w = "";
+        if (typeof rt === "number" && typeof bt === "number") {
+            w = rt > bt ? "Winner: RED" : (bt > rt ? "Winner: BLUE" : "Tie");
+        }
+        document.getElementById("winner").textContent = w;
+
+        const tr = (payload.teams && payload.teams.red || []).filter(Boolean).join(" ");
+        const tb = (payload.teams && payload.teams.blue || []).filter(Boolean).join(" ");
+        document.getElementById("teams-red").textContent = tr;
+        document.getElementById("teams-blue").textContent = tb;
+
+        renderBreakdown(redScore, blueScore);
+        renderFieldMap(res);
+
+        // Helpful: enable copy of raw JSON via data URL
+        const rawBlob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
+        const rawUrl = URL.createObjectURL(rawBlob);
+        document.getElementById("raw-link").innerHTML =
+            `<a href="${rawUrl}" download="cheesy_match.json">Download raw JSON</a>`;
+    })();
+</script>
