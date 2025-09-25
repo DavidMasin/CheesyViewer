@@ -3,14 +3,14 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>Cheesy Viewer (Compact + Robust)</title>
+    <title>Cheesy Viewer (Auto Reef UI)</title>
     <style>
-        :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#e24b4b;--blue:#4aa3ff}
-        *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-        .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
-        h1{margin:0 0 2px;font-size:26px} .muted{color:var(--muted)}
+        :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#ff5555;--blue:#4aa3ff;--auto:#00ff00}
+        *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+        .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+        h1{margin:0 0 4px;font-size:26px} .muted{color:var(--muted)}
         .grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr}
-        .card{background:#121826;border:1px solid #1b2433;border-radius:14px;padding:14px}
+        .card{background:#111826;border:1px solid #1a2333;border-radius:14px;padding:14px;box-shadow:0 1px 0 #0006 inset}
         .teams{display:flex;gap:10px;flex-wrap:wrap}
         .badge{display:inline-flex;align-items:center;gap:8px;background:#0e1420;border:1px solid #1b2433;border-radius:10px;padding:8px 10px}
         .dot{width:10px;height:10px;border-radius:50%}
@@ -18,13 +18,16 @@
         td.red{color:var(--red)} td.blue{color:var(--blue)}
         .reef-wrap{padding:16px}
         .reef-title{display:flex;align-items:center;gap:10px;margin:6px 2px 10px}
-        .legend{display:flex;gap:14px;margin-top:8px}
+        .legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
         .legend .item{display:flex;gap:8px;align-items:center}
         .legend .swatch{width:18px;height:10px;border-radius:4px;border:1px solid #0003}
         .footer{margin-top:16px;font-size:12px;color:var(--muted)}
         .error{color:#ff6565}
         svg.reef{width:100%;height:auto;display:block;background:#0d121d;border:1px solid #1b2433;border-radius:12px}
         a{color:#b9dcff}
+        .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .rowtitle{margin:2px 0 8px;color:var(--muted);font-size:14px}
+        .pill{padding:.25rem .5rem;border-radius:999px;background:#0f1728;border:1px solid #1c2437;color:#a7bedb;font-size:12px}
     </style>
 </head>
 <body>
@@ -37,6 +40,7 @@
             <div class="teams">
                 <div class="badge"><div class="dot" style="background:var(--red)"></div><div id="teamsRed">—</div></div>
                 <div class="badge"><div class="dot" style="background:var(--blue)"></div><div id="teamsBlue">—</div></div>
+                <span class="pill" id="eventName"></span>
             </div>
 
             <h3 style="margin:14px 2px 8px">Breakdown</h3>
@@ -47,96 +51,245 @@
                 </table>
             </div>
 
-            <div class="footer" id="when"></div>
             <div class="footer" id="rawLink"></div>
         </div>
 
         <div class="card reef-wrap">
-            <div class="reef-title"><div class="dot" style="background:var(--red)"></div><div class="muted">RED Reef</div></div>
-            <svg id="reefRed" class="reef" viewBox="0 0 600 520" aria-label="Red reef visualization"></svg>
-            <div class="legend">
-                <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
-                <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
-                <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
-                <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
-                <div class="item"><div class="swatch" style="background:var(--red)"></div><div class="muted">Coral pieces</div></div>
+            <div class="reef-title"><div class="dot" style="background:var(--red)"></div><div>RED Reef — Auto & Teleop</div></div>
+            <div class="split">
+                <div>
+                    <div class="rowtitle">Auto overlay</div>
+                    <svg id="reefAutoRed" class="reef" viewBox="0 0 120 120" aria-label="Red Auto Reef"></svg>
+                </div>
+                <div>
+                    <div class="rowtitle">Teleop overlay</div>
+                    <svg id="reefTeleRed" class="reef" viewBox="0 0 120 120" aria-label="Red Teleop Reef"></svg>
+                </div>
             </div>
         </div>
     </section>
 
     <div class="card reef-wrap" style="margin-top:16px">
-        <div class="reef-title"><div class="dot" style="background:var(--blue)"></div><div class="muted">BLUE Reef</div></div>
-        <svg id="reefBlue" class="reef" viewBox="0 0 600 520" aria-label="Blue reef visualization"></svg>
+        <div class="reef-title"><div class="dot" style="background:var(--blue)"></div><div>BLUE Reef — Auto & Teleop</div></div>
+        <div class="split">
+            <div>
+                <div class="rowtitle">Auto overlay</div>
+                <svg id="reefAutoBlue" class="reef" viewBox="0 0 120 120" aria-label="Blue Auto Reef"></svg>
+            </div>
+            <div>
+                <div class="rowtitle">Teleop overlay</div>
+                <svg id="reefTeleBlue" class="reef" viewBox="0 0 120 120" aria-label="Blue Teleop Reef"></svg>
+            </div>
+        </div>
         <div class="legend">
-            <div class="item"><div class="swatch" style="background:#e5f1ff"></div><div class="muted">L1</div></div>
-            <div class="item"><div class="swatch" style="background:#cde5ff"></div><div class="muted">L2</div></div>
-            <div class="item"><div class="swatch" style="background:#b9dcff"></div><div class="muted">L3</div></div>
-            <div class="item"><div class="swatch" style="background:#a3d1ff"></div><div class="muted">L4</div></div>
-            <div class="item"><div class="swatch" style="background:var(--blue)"></div><div class="muted">Coral pieces</div></div>
+            <div class="item"><svg width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" style="fill:rgba(0,255,0,.3);stroke:#0002"/></svg><div class="muted">Scored in Auto</div></div>
+            <div class="item"><svg width="20" height="20" viewBox="12.5 62.5 25 10"><path d="m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0" fill="none" stroke="#fff"/><path d="m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z" fill="#fff"/></svg><div class="muted">Teleop Coral</div></div>
         </div>
     </div>
 </div>
 
 <script>
-    // ===== Base64URL helpers =====
+    // ========================= Base64URL helpers =========================
     function b64urlToBytes(s){ s=(s||"").replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var bin=atob(s); var bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
 
-    // ===== BitReader for #p packets =====
+    // ========================= Bit Reader =========================
     function BitReader(bytes){ this.b=bytes||new Uint8Array(0); this.i=0; this.buf=0; this.bits=0; }
     BitReader.prototype.read=function(n){ var out=0,shift=0; while(n>0){ if(this.bits===0){ if(this.i>=this.b.length) return null; this.buf=this.b[this.i++]; this.bits=8; } var take=Math.min(this.bits,n); out |= ((this.buf & ((1<<take)-1))<<shift); this.buf>>=take; this.bits-=take; n-=take; shift+=take; } return out; };
 
-    // ===== Robust hash parser =====
+    // ========================= Hash parsing =========================
     function readHash(){ var h=location.hash||""; if(h.startsWith('#')) h=h.slice(1); return h; }
-    function parseHash(){ var h=readHash();
-        // Prefer compact #p= over others for shortest URLs
-        var m=h.match(/(?:^|&)p=([^&]+)/); if(m) return {kind:'p', v:m[1]};
-        // Plain JSON
-        m=h.match(/(?:^|&)json=([^&]+)/); if(m) return {kind:'json', v:m[1]};
-        // Compressed (URI-safe LZString); accept both d= and data=
-        m=h.match(/(?:^|&)(?:d|data)=([^&]+)/); if(m) return {kind:'lz', v:m[1]};
-        return null; }
+    function parseHash(){ var h=readHash(); var m=h.match(/(?:^|&)p=([^&]+)/); if(m) return {kind:'p', v:m[1]}; m=h.match(/(?:^|&)json=([^&]+)/); if(m) return {kind:'json', v:m[1]}; m=h.match(/(?:^|&)(?:d|data)=([^&]+)/); if(m) return {kind:'lz', v:m[1]}; return null; }
 
-    // ===== Compact packet v1 decoder =====
-    // Bits: 8 ver (=1), 6*14 team nums, 24*2 red reef, 24*2 blue reef, 4+4 red algae, 4+4 blue algae
-    function decodePacketV1(bytes){ var br=new BitReader(bytes); var v=br.read(8); if(v!==1) throw new Error('Unsupported packet version '+v);
-        var t=[]; for(var i=0;i<6;i++){ var tn=br.read(14); t.push(tn||0); }
-        function readReef(){ var faces='ABCDEF', o={}; for(var fi=0;fi<6;fi++){ var f=faces[fi]; for(var lv=1;lv<=4;lv++){ o[f+lv]=br.read(2)||0; } } return o; }
-        var r=readReef(), b=readReef();
-        r.AlgaeRemoved=br.read(4)||0; r.AlgaeProcessed=br.read(4)||0; b.AlgaeRemoved=br.read(4)||0; b.AlgaeProcessed=br.read(4)||0;
-        return { t:{ r:t.slice(0,3).filter(Boolean), b:t.slice(3).filter(Boolean) }, r:r, b:b };
-    }
-
-    // ===== Minimal LZString (decoder only) for #d/#data =====
+    // ========================= Minimal LZString (decoder) =========================
     (function(){ if(window.LZString) return; var f=String.fromCharCode, keyStrUriSafe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$", baseReverseDic={};
         function getBaseValue(a,c){ if(!baseReverseDic[a]){ baseReverseDic[a]={}; for(var i=0;i<a.length;i++) baseReverseDic[a][a.charAt(i)]=i; } return baseReverseDic[a][c]; }
         function _decompress(len, rv, g){ var d=[], ei=4, ds=4, nb=3, e="", r=[], i,w,b,rb,mp,p,dt={val:g(0),position:rv,index:1}; for(i=0;i<3;i++) d[i]=i; b=0; mp=Math.pow(2,2); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } switch(b){ case 0: b=0; mp=Math.pow(2,8); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } e=f(b); break; case 1: b=0; mp=Math.pow(2,16); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } e=f(b); break; case 2: return ""; } d[3]=e; w=e; r.push(e); while(true){ if(dt.index>len) return ""; b=0; mp=Math.pow(2,nb); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } var cnum=b, str; switch(cnum){ case 0: b=0; mp=Math.pow(2,8); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } d[ds++]=f(b); cnum=ds-1; ei--; break; case 1: b=0; mp=Math.pow(2,16); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } d[ds++]=f(b); cnum=ds-1; ei--; break; case 2: return r.join(""); } if(ei===0){ ei=Math.pow(2,nb); nb++; } if(d[cnum]) str=d[cnum]; else { if(cnum===ds) str=w+w.charAt(0); else return null; } r.push(str); d[ds++]=w+str.charAt(0); ei--; w=str; if(ei===0){ ei=Math.pow(2,nb); nb++; } } }
-        window.LZString={ decompressFromEncodedURIComponent:function(input){ if(input==null) return ""; if(input==="") return null; input=input.replace(/ /g,"+"); return _decompress(input.length,32,function(i){ return getBaseValue(keyStrUriSafe,input.charAt(i)); }); } };
+        window.LZString={decompressFromEncodedURIComponent:function(input){ if(input==null) return ""; if(input==="") return null; input=input.replace(/ /g,"+"); return _decompress(input.length,32,function(i){ return getBaseValue(keyStrUriSafe,input.charAt(i)); }); }};
     })();
 
-    // ===== UI helpers + renderer =====
+    // ========================= UI helpers =========================
     function byId(id){return document.getElementById(id)}
     function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
 
-    function renderReef(svgId, counts){ var svg=byId(svgId); if(!svg) return; svg.innerHTML=""; var W=600,H=520,CX=W/2,CY=H/2; var R=[120,180,240,280];
-        function path(cx,cy,r0,r1,a0,a1){ function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];} var p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0); return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`; }
-        var faces='ABCDEF'; for(var fi=0; fi<6; fi++){ var a0=(Math.PI*2)*fi/6-Math.PI/2, a1=(Math.PI*2)*(fi+1)/6-Math.PI/2; for(var lv=1; lv<=4; lv++){ var k=faces[fi]+lv, v=(counts&&counts[k])||0; var r0=R[lv-1]-(lv===1?25:20), r1=R[lv-1]+(lv===4?25:20); var p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',path(CX,CY,r0,r1,a0,a1)); var shades=[0.94,0.90,0.86,0.82]; p.setAttribute('fill',`rgba(90,150,255,${(1-shades[lv-1]).toFixed(2)})`); p.setAttribute('stroke','#0b1220'); p.setAttribute('stroke-width','1.2'); svg.appendChild(p); if(v>0){ var midr=(r0+r1)/2, mida=(a0+a1)/2; var tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida); var t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',tx); t.setAttribute('y',ty); t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle'); t.setAttribute('font-size','16'); t.textContent=String(v); svg.appendChild(t); } } } }
+    // === Node transforms A..L (adapted from TBA ref) ===
+    const NODE_TRANSFORMS = {
+        A: "matrix(1,0,0,-1,0,120.00208)",
+        B: "",
+        C: "matrix(0.5,-0.8660254,-0.8660254,-0.5,82.086452,142.17791)",
+        D: "rotate(-60,60.248055,60.00104)",
+        E: "matrix(-0.5,-0.8660254,-0.8660254,0.5,142.33451,82.176869)",
+        F: "rotate(-120,60.248055,60.001041)",
+        G: "matrix(-1,0,0,1,120.49611,0)",
+        H: "rotate(180,60.248053,60.00104)",
+        I: "matrix(-0.5,0.8660254,0.8660254,0.5,38.409658,-22.175826)",
+        J: "rotate(120,60.248053,60.001041)",
+        K: "matrix(0.5,0.8660254,0.8660254,-0.5,-21.838398,37.825214)",
+        L: "rotate(60,60.248051,60.001042)"
+    }; // ref: TBA 2025 reef drawing
 
-    function renderAll(payload){ var red=payload.r || payload.RedScore || (payload.result && (payload.result.RedScore||payload.result.red)) || {}; var blue=payload.b || payload.BlueScore || (payload.result && (payload.result.BlueScore||payload.result.blue)) || {}; var title=payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
-        setText('matchTitle', title + (payload.eventName ? ' — '+payload.eventName : '')); setText('subtitle','Reef + breakdown');
-        var rTeams=(payload.t && payload.t.r) || (payload.teams && (payload.teams.red||payload.teams.r)) || []; var bTeams=(payload.t && payload.t.b) || (payload.teams && (payload.teams.blue||payload.teams.b)) || []; setText('teamsRed', (rTeams||[]).join(' • ')); setText('teamsBlue', (bTeams||[]).join(' • '));
-        (function(){ var tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; function row(n,rv,bv){ var tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr);} var faces='ABCDEF'; for(var fi=0;fi<6;fi++){ for(var lv=1;lv<=4;lv++){ var k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) row(k,red[k],blue[k]); } } row('AlgaeRemoved',red.AlgaeRemoved||0,blue.AlgaeRemoved||0); row('AlgaeProcessed',red.AlgaeProcessed||0,blue.AlgaeProcessed||0); })();
-        renderReef('reefRed', red); renderReef('reefBlue', blue);
+    // === Draw a 3-ring reef (L4/L3/L2) with auto fill + teleop coral marks ===
+    function drawReefNodes(svgId, rows, isRed){
+        const svg = byId(svgId); if(!svg) return; svg.innerHTML="";
+        // rows = { top:[12], mid:[12], bot:[12] } booleans for this overlay
+        const rowKeys = ["top","mid","bot"]; // L4,L3,L2
+        const letter = "ABCDEFGHIJKL";
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.setAttribute('transform', `rotate(${isRed?0:180},60,60)`);
+        svg.appendChild(g);
+        function addPath(d, fill, stroke, opacity){
+            const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p.setAttribute('d', d);
+            if (fill!=null) p.setAttribute('fill', fill); else p.setAttribute('fill','none');
+            p.setAttribute('stroke', stroke||'#000');
+            p.setAttribute('stroke-width','1');
+            if (opacity!=null) p.setAttribute('fill-opacity', opacity);
+            p.setAttribute('stroke-linejoin','round');
+            g.appendChild(p);
+        }
+        function coralGlyph(){
+            // the classic TBA coral glyph
+            const gp = document.createElementNS('http://www.w3.org/2000/svg','g');
+            const p1 = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p1.setAttribute('d','m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0');
+            p1.setAttribute('fill','none'); p1.setAttribute('stroke','#fff');
+            const p2 = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p2.setAttribute('d','m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z');
+            p2.setAttribute('fill','#fff');
+            gp.appendChild(p1); gp.appendChild(p2); return gp;
+        }
+
+        function nodeWedge(letter, rowKey){
+            const t = NODE_TRANSFORMS[letter];
+            const gg = document.createElementNS('http://www.w3.org/2000/svg','g');
+            if (t) gg.setAttribute('transform', t);
+            const d = 'M 10,60 H 60 L 10,88.8675135 Z';
+            return {group:gg, pathd:d};
+        }
+
+        // Draw background (faint wedges)
+        for (const L of letter){ const {group, pathd} = nodeWedge(L,'bg'); addPath.call({g:group}, pathd, '#000', '#fff', 0); g.appendChild(group); }
+
+        function drawRow(rowKey, flags, isAuto){
+            const arr = flags || new Array(12).fill(false);
+            for (let i=0;i<12;i++){
+                const L = letter[i];
+                const {group, pathd} = nodeWedge(L, rowKey);
+                if (isAuto && arr[i]){
+                    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+                    p.setAttribute('d', pathd);
+                    p.setAttribute('fill', 'rgba(0,255,0,.3)');
+                    p.setAttribute('stroke', '#000');
+                    p.setAttribute('stroke-width','1');
+                    p.setAttribute('stroke-linejoin','round');
+                    group.appendChild(p);
+                }
+                if (!isAuto && arr[i]){
+                    group.appendChild(coralGlyph());
+                }
+                g.appendChild(group);
+            }
+        }
+
+        drawRow('top', rows.top, true);   // auto layer for top (L4)
+        drawRow('mid', rows.mid, true);   // auto layer for mid (L3)
+        drawRow('bot', rows.bot, true);   // auto layer for bot (L2)
+    }
+
+    function drawTele(svgId, rows, isRed){
+        const svg = byId(svgId); if(!svg) return; svg.innerHTML="";
+        const letter = "ABCDEFGHIJKL";
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.setAttribute('transform', `rotate(${isRed?0:180},60,60)`);
+        svg.appendChild(g);
+        function coralGlyph(){
+            const gp = document.createElementNS('http://www.w3.org/2000/svg','g');
+            const p1 = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p1.setAttribute('d','m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0'); p1.setAttribute('fill','none'); p1.setAttribute('stroke','#fff');
+            const p2 = document.createElementNS('http://www.w3.org/2000/svg','path');
+            p2.setAttribute('d','m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z'); p2.setAttribute('fill','#fff');
+            gp.appendChild(p1); gp.appendChild(p2); return gp;
+        }
+        function nodeGroup(letter){ const t=NODE_TRANSFORMS[letter]; const gg=document.createElementNS('http://www.w3.org/2000/svg','g'); if(t) gg.setAttribute('transform',t); return gg; }
+        function drawRow(flags){ const arr = flags || new Array(12).fill(false); for (let i=0;i<12;i++){ if(!arr[i]) continue; const L=letter[i]; const gg=nodeGroup(L); gg.appendChild(coralGlyph()); g.appendChild(gg);} }
+        drawRow(rows.top); drawRow(rows.mid); drawRow(rows.bot);
+    }
+
+    // === Build counts from node flags (A..L per row) ===
+    function countsFromNodes(autoRows, teleRows){
+        const faces='ABCDEF'; const out={}; for(const f of faces) for(let l=1;l<=4;l++) out[f+l]=0; // init
+        function bump(faceIndex, level){ const key = faces[faceIndex] + level; out[key] = (out[key]||0) + 1; }
+        function apply(rows, level){ if(!rows) return; const arrs=[rows.top, rows.mid, rows.bot]; const lvl=[4,3,2]; for(let ri=0;ri<3;ri++){ const rowArr=arrs[ri]||[]; for(let j=0;j<12;j++){ if(rowArr[j]) bump(Math.floor(j/2), lvl[ri]); } } }
+        apply(autoRows); apply(teleRows);
+        return out;
+    }
+
+    // === Renderer ===
+    function renderAll(payload){
+        const title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
+        setText('matchTitle', title);
+        setText('eventName', payload.eventName || '');
+        const rTeams=(payload.t&&payload.t.r)||[]; const bTeams=(payload.t&&payload.t.b)||[]; setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', bTeams.join(' • '));
+
+        // Auto/Tele rows if available
+        const autoR = payload.auto && payload.auto.r; const autoB = payload.auto && payload.auto.b;
+        const teleR = payload.tele && payload.tele.r; const teleB = payload.tele && payload.tele.b;
+
+        // Fallback counts
+        let red = payload.r||{}; let blue=payload.b||{};
+        if ((!red.A2 && autoR) || (!blue.A2 && autoB)){
+            const rc = countsFromNodes(autoR, teleR); const bc = countsFromNodes(autoB, teleB); red = Object.assign({AlgaeRemoved:0,AlgaeProcessed:0}, rc, red); blue = Object.assign({AlgaeRemoved:0,AlgaeProcessed:0}, bc, blue);
+        }
+
+        // Breakdown table
+        (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
+            const faces='ABCDEF'; for(let fi=0;fi<6;fi++){ for(let lv=1;lv<=4;lv++){ const k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) row(k,red[k],blue[k]); } }
+            row('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0); row('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
+        })();
+
+        // Draw auto + tele overlays (if available)
+        if (autoR) drawReefNodes('reefAutoRed',  autoR, true);
+        if (autoB) drawReefNodes('reefAutoBlue', autoB, false);
+        if (teleR) drawTele('reefTeleRed',  teleR, true);
+        if (teleB) drawTele('reefTeleBlue', teleB, false);
+
         try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
     }
 
     function showError(msg){ var el=byId('subtitle'); if(el) el.innerHTML='<span class="error">'+msg+'</span>'; console.error('[VIEWER]', msg); }
 
-    (function main(){ try{ var frag=parseHash(); if(!frag){ if((location.search||'').match(/(^|[?&])demo=1(&|$)/)){ // demo packet
-        var demoJson={ t:{r:[111,222,333],b:[444,555,666]}, r:{A1:2,A2:1,C4:1,AlgaeRemoved:2,AlgaeProcessed:1}, b:{B1:1,C2:2,D3:1,E4:1} }; renderAll(demoJson); return; }
-        showError('No data. Use #p= (compact) or #json= …'); return; }
-        if(frag.kind==='p'){ var bytes=b64urlToBytes(frag.v); var payload=decodePacketV1(bytes); renderAll(payload); return; }
-        if(frag.kind==='json'){ var raw=decodeURIComponent(frag.v); var payload=JSON.parse(raw); renderAll(payload); return; }
-        if(frag.kind==='lz'){ if(!window.LZString||!LZString.decompressFromEncodedURIComponent) throw new Error('LZString missing'); var raw=LZString.decompressFromEncodedURIComponent(frag.v); if(!raw) throw new Error('Failed to decode compressed data'); var payload=JSON.parse(raw); renderAll(payload); return; }
+    // === Decode compact packet v1/v2 ===
+    function decodePacket(bytes){ var br=new BitReader(bytes); var ver=br.read(8); if(ver!==1 && ver!==2) throw new Error('Unsupported packet version '+ver);
+        const teams=[]; for(let i=0;i<6;i++) teams.push(br.read(14)||0);
+        if (ver===1){
+            function readReef(){ const faces='ABCDEF'; const o={}; for(let fi=0;fi<6;fi++){ const f=faces[fi]; for(let lv=1;lv<=4;lv++){ o[f+lv]=br.read(2)||0; } } return o; }
+            const r=readReef(), b=readReef();
+            const rAR=br.read(4)||0, rAP=br.read(4)||0, bAR=br.read(4)||0, bAP=br.read(4)||0;
+            r.AlgaeRemoved=rAR; r.AlgaeProcessed=rAP; b.AlgaeRemoved=bAR; b.AlgaeProcessed=bAP;
+            return { t:{r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean)}, r:r, b:b };
+        } else { // v2 with node flags
+            function read36(){ const a=new Array(12).fill(false); const b=new Array(12).fill(false); const c=new Array(12).fill(false); for(let j=0;j<12;j++) a[j]=!!br.read(1); for(let j=0;j<12;j++) b[j]=!!br.read(1); for(let j=0;j<12;j++) c[j]=!!br.read(1); return {top:a, mid:b, bot:c}; }
+            const autoR = read36(); const teleR = read36(); const autoB = read36(); const teleB = read36();
+            const rL1 = br.read(4)||0, bL1 = br.read(4)||0;
+            const rAR=br.read(4)||0, rAP=br.read(4)||0, bAR=br.read(4)||0, bAP=br.read(4)||0;
+            const rc = countsFromNodes(autoR, teleR); const bc = countsFromNodes(autoB, teleB);
+            rc.A1=(rc.A1||0)+(Math.floor(rL1/6)); bc.A1=(bc.A1||0)+(Math.floor(bL1/6)); // distribute L1 evenly if needed
+            return { t:{r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean)}, r:Object.assign({AlgaeRemoved:rAR,AlgaeProcessed:rAP}, rc), b:Object.assign({AlgaeRemoved:bAR,AlgaeProcessed:bAP}, bc), auto:{r:autoR,b:autoB}, tele:{r:teleR,b:teleB} };
+        }
+    }
+
+    (function main(){ try{ const frag=parseHash(); if(!frag){
+        // demo JSON that shows auto
+        const demo={ t:{r:[111,222,333],b:[444,555,666]}, m:'Q1', auto:{ r:{ top:Array(12).fill(false).map((_,i)=>i%3===0), mid:Array(12).fill(false).map((_,i)=>i%4===0), bot:Array(12).fill(false).map((_,i)=>i%5===0) }, b:{ top:Array(12).fill(false).map((_,i)=>i%5===0), mid:Array(12).fill(false).map((_,i)=>i%3===0), bot:Array(12).fill(false).map((_,i)=>i%4===0) } }, tele:{ r:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) }, b:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) } }, r:{AlgaeRemoved:2,AlgaeProcessed:1}, b:{AlgaeRemoved:1,AlgaeProcessed:1} }; renderAll(demo); return; }
+        if(frag.kind==='p'){ const payload=decodePacket(b64urlToBytes(frag.v)); renderAll(payload); return; }
+        if(frag.kind==='json'){ const raw=decodeURIComponent(frag.v); const obj=JSON.parse(raw);
+            // If full offline payload, derive auto/tele arrays
+            if(obj && obj.result && obj.result.RedScore && obj.result.RedScore.Reef){
+                function derive(score){ const R=score.Reef||{}; const A=R.AutoBranches||[]; const T=R.Branches||[]; function row(x){ const a=Array.isArray(x)?x:[]; const top=(a[0]||[]).map(Boolean); const mid=(a[1]||[]).map(Boolean); const bot=(a[2]||[]).map(Boolean); return {top,mid,bot}; } return {auto:row(A), tele:row(T)}; }
+                const dr=derive(obj.result.RedScore); const db=derive(obj.result.BlueScore);
+                obj.auto={r:dr.auto,b:db.auto}; obj.tele={r:dr.tele,b:db.tele};
+            }
+            renderAll(obj); return; }
+        if(frag.kind==='lz'){ if(!window.LZString||!LZString.decompressFromEncodedURIComponent) throw new Error('LZString missing'); const raw=LZString.decompressFromEncodedURIComponent(frag.v); if(!raw) throw new Error('Failed to decode compressed data'); const payload=JSON.parse(raw); renderAll(payload); return; }
     }catch(err){ showError((err&&err.message)||String(err)); } })();
 </script>
 </body>
