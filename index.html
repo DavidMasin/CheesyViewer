@@ -298,8 +298,9 @@
             if (packed){
                 var raw;
                 if (packed.key === "json"){
-                    raw = decodeURIComponent(packed.value);
+                    raw = decodeURIComponent(packed.value);   // <— this path will be used now
                 } else {
+                    // compressed path
                     if (!window.LZString || !LZString.decompressFromEncodedURIComponent)
                         throw new Error("LZString not available to decode");
                     raw = LZString.decompressFromEncodedURIComponent(packed.value);
@@ -309,6 +310,7 @@
                 renderAll(payload);
                 return;
             }
+
             // Demo fallback
             if ((location.search||"").match(/(^|[?&])demo=1(&|$)/)) {
                 var sample = { eventName:"Demo Event", m:"Q1",
