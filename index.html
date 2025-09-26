@@ -263,15 +263,18 @@
         const title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
         setText('matchTitle', title);
         setText('eventName', payload.eventName || '');
-        const rTeams=(payload.t&&payload.t.r)||[]; const bTeams=(payload.t&&payload.t.b)||[]; setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', bTeams.join(' • '));
+        const rTeams=(payload.t&&payload.t.r)||[]; const bTeams=(payload.t&&payload.t.b)||[]; setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', (bTeams||[]).join(' • '));
+        // Ensure counts objects exist for both alliances
+        const red = payload.r || payload.RedScore || {};
+        const blue = payload.b || payload.BlueScore || {};
+
 
         // Node overlays if available
         const autoR = payload.auto && payload.auto.r; const autoB = payload.auto && payload.auto.b;
         const teleR = payload.tele && payload.tele.r; const teleB = payload.tele && payload.tele.b;
         const haveNodesR = !!(autoR||teleR); const haveNodesB = !!(autoB||teleB);
 
-        // Counts (always try to render at least these)
-        let red = payload.r||{}; let blue=payload.b||{};
+
 
         // Breakdown table
         (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
