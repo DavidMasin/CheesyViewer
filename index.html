@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>Cheesy Viewer (Auto Reef UI)</title>
     <style>
-        :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#ff5555;--blue:#4aa3ff;--auto:#00ff00}
-        *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+        :root{--bg:#0a0d12;--fg:#e8eef7;--muted:#8aa0b8;--red:#ff5555;--blue:#4aa3ff}
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
         .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
-        h1{margin:0 0 4px;font-size:26px} .muted{color:var(--muted)}
+        h1{margin:0 0 4px;font-size:26px}
+        .muted{color:var(--muted)}
         .grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr}
         .card{background:#111826;border:1px solid #1a2333;border-radius:14px;padding:14px;box-shadow:0 1px 0 #0006 inset}
-        .teams{display:flex;gap:10px;flex-wrap:wrap}
+        .teams{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
         .badge{display:inline-flex;align-items:center;gap:8px;background:#0e1420;border:1px solid #1b2433;border-radius:10px;padding:8px 10px}
         .dot{width:10px;height:10px;border-radius:50%}
-        table{width:100%;border-collapse:collapse} th,td{padding:8px 10px;border-bottom:1px solid #1b2231} th{color:var(--muted);text-align:left;font-weight:600}
+        .pill{padding:.25rem .5rem;border-radius:999px;background:#0f1728;border:1px solid #1c2437;color:#a7bedb;font-size:12px}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:8px 10px;border-bottom:1px solid #1b2231}
+        th{color:var(--muted);text-align:left;font-weight:600}
         td.red{color:var(--red)} td.blue{color:var(--blue)}
         .reef-wrap{padding:16px}
         .reef-title{display:flex;align-items:center;gap:10px;margin:6px 2px 10px}
@@ -27,7 +33,6 @@
         a{color:#b9dcff}
         .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .rowtitle{margin:2px 0 8px;color:var(--muted);font-size:14px}
-        .pill{padding:.25rem .5rem;border-radius:999px;background:#0f1728;border:1px solid #1c2437;color:#a7bedb;font-size:12px}
     </style>
 </head>
 <body>
@@ -89,30 +94,32 @@
 </div>
 
 <script>
-    // ========================= Base64URL helpers =========================
+    // ===== Base64URL helpers =====
     function b64urlToBytes(s){ s=(s||"").replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var bin=atob(s); var bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
 
-    // ========================= Bit Reader =========================
+    // ===== BitReader for #p packets =====
     function BitReader(bytes){ this.b=bytes||new Uint8Array(0); this.i=0; this.buf=0; this.bits=0; }
     BitReader.prototype.read=function(n){ var out=0,shift=0; while(n>0){ if(this.bits===0){ if(this.i>=this.b.length) return null; this.buf=this.b[this.i++]; this.bits=8; } var take=Math.min(this.bits,n); out |= ((this.buf & ((1<<take)-1))<<shift); this.buf>>=take; this.bits-=take; n-=take; shift+=take; } return out; };
 
-    // ========================= Hash parsing =========================
+    // ===== Robust hash parser =====
     function readHash(){ var h=location.hash||""; if(h.startsWith('#')) h=h.slice(1); return h; }
-    function parseHash(){ var h=readHash(); var m=h.match(/(?:^|&)p=([^&]+)/); if(m) return {kind:'p', v:m[1]}; m=h.match(/(?:^|&)json=([^&]+)/); if(m) return {kind:'json', v:m[1]}; m=h.match(/(?:^|&)(?:d|data)=([^&]+)/); if(m) return {kind:'lz', v:m[1]}; return null; }
+    function parseHash(){
+        var h=readHash();
+        var m=h.match(/(?:^|&)p=([^&]+)/); if(m) return {kind:'p', v:m[1]};
+        m=h.match(/(?:^|&)json=([^&]+)/); if(m) return {kind:'json', v:m[1]};
+        m=h.match(/(?:^|&)(?:d|data)=([^&]+)/); if(m) return {kind:'lz', v:m[1]};
+        return null;
+    }
 
-    // ========================= Minimal LZString (decoder) =========================
+    // ===== Minimal LZString (decoder only) for #d/#data =====
     (function(){ if(window.LZString) return; var f=String.fromCharCode, keyStrUriSafe="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$", baseReverseDic={};
         function getBaseValue(a,c){ if(!baseReverseDic[a]){ baseReverseDic[a]={}; for(var i=0;i<a.length;i++) baseReverseDic[a][a.charAt(i)]=i; } return baseReverseDic[a][c]; }
         function _decompress(len, rv, g){ var d=[], ei=4, ds=4, nb=3, e="", r=[], i,w,b,rb,mp,p,dt={val:g(0),position:rv,index:1}; for(i=0;i<3;i++) d[i]=i; b=0; mp=Math.pow(2,2); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } switch(b){ case 0: b=0; mp=Math.pow(2,8); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } e=f(b); break; case 1: b=0; mp=Math.pow(2,16); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } e=f(b); break; case 2: return ""; } d[3]=e; w=e; r.push(e); while(true){ if(dt.index>len) return ""; b=0; mp=Math.pow(2,nb); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } var cnum=b, str; switch(cnum){ case 0: b=0; mp=Math.pow(2,8); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } d[ds++]=f(b); cnum=ds-1; ei--; break; case 1: b=0; mp=Math.pow(2,16); p=1; while(p!=mp){ rb=dt.val & dt.position; dt.position>>=1; if(dt.position===0){ dt.position=rv; dt.val=g(dt.index++); } b|=(rb>0?1:0)*p; p<<=1; } d[ds++]=f(b); cnum=ds-1; ei--; break; case 2: return r.join(""); } if(ei===0){ ei=Math.pow(2,nb); nb++; } if(d[cnum]) str=d[cnum]; else { if(cnum===ds) str=w+w.charAt(0); else return null; } r.push(str); d[ds++]=w+str.charAt(0); ei--; w=str; if(ei===0){ ei=Math.pow(2,nb); nb++; } } }
         window.LZString={decompressFromEncodedURIComponent:function(input){ if(input==null) return ""; if(input==="") return null; input=input.replace(/ /g,"+"); return _decompress(input.length,32,function(i){ return getBaseValue(keyStrUriSafe,input.charAt(i)); }); }};
     })();
 
-    // ========================= UI helpers =========================
-    function byId(id){return document.getElementById(id)}
-    function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "": String(val))}
-
-    // === Node transforms A..L (adapted from TBA ref) ===
-    const NODE_TRANSFORMS = {
+    // ===== Node transforms for 12 branches (A..L) =====
+    const NODE_XFORM = {
         A: "matrix(1,0,0,-1,0,120.00208)",
         B: "",
         C: "matrix(0.5,-0.8660254,-0.8660254,-0.5,82.086452,142.17791)",
@@ -125,122 +132,91 @@
         J: "rotate(120,60.248053,60.001041)",
         K: "matrix(0.5,0.8660254,0.8660254,-0.5,-21.838398,37.825214)",
         L: "rotate(60,60.248051,60.001042)"
-    }; // ref: TBA 2025 reef drawing
+    };
 
-    // === Draw a 3-ring reef (L4/L3/L2) with auto fill + teleop coral marks ===
-    function drawReefNodes(svgId, rows, isRed){
-        const svg = byId(svgId); if(!svg) return; svg.innerHTML="";
-        // rows = { top:[12], mid:[12], bot:[12] } booleans for this overlay
-        const rowKeys = ["top","mid","bot"]; // L4,L3,L2
-        const letter = "ABCDEFGHIJKL";
+    // ===== UI helpers =====
+    function byId(id){return document.getElementById(id)}
+    function setText(id, val){var el=byId(id); if(el) el.textContent = (val==null? "" : String(val))}
+
+    // ===== Reef renderers =====
+    function coralGlyph(){
+        const gp = document.createElementNS('http://www.w3.org/2000/svg','g');
+        const p1 = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p1.setAttribute('d','m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0');
+        p1.setAttribute('fill','none'); p1.setAttribute('stroke','#fff');
+        const p2 = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p2.setAttribute('d','m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z');
+        p2.setAttribute('fill','#fff');
+        gp.appendChild(p1); gp.appendChild(p2);
+        return gp;
+    }
+
+    function nodeGroup(letter){
+        const t = NODE_XFORM[letter];
         const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-        g.setAttribute('transform', `rotate(${isRed?0:180},60,60)`);
-        svg.appendChild(g);
-        function addPath(d, fill, stroke, opacity){
-            const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p.setAttribute('d', d);
-            if (fill!=null) p.setAttribute('fill', fill); else p.setAttribute('fill','none');
-            p.setAttribute('stroke', stroke||'#000');
-            p.setAttribute('stroke-width','1');
-            if (opacity!=null) p.setAttribute('fill-opacity', opacity);
-            p.setAttribute('stroke-linejoin','round');
-            g.appendChild(p);
-        }
-        function coralGlyph(){
-            // the classic TBA coral glyph
-            const gp = document.createElementNS('http://www.w3.org/2000/svg','g');
-            const p1 = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p1.setAttribute('d','m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0');
-            p1.setAttribute('fill','none'); p1.setAttribute('stroke','#fff');
-            const p2 = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p2.setAttribute('d','m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z');
-            p2.setAttribute('fill','#fff');
-            gp.appendChild(p1); gp.appendChild(p2); return gp;
-        }
+        if (t) g.setAttribute('transform', t);
+        const wedge = document.createElementNS('http://www.w3.org/2000/svg','path');
+        wedge.setAttribute('d','M 10,60 H 60 L 10,88.8675135 Z');
+        wedge.setAttribute('fill','rgba(255,255,255,0.04)');
+        wedge.setAttribute('stroke','#0b1220');
+        wedge.setAttribute('stroke-width','1');
+        g.appendChild(wedge);
+        return g;
+    }
 
-        function nodeWedge(letter, rowKey){
-            const t = NODE_TRANSFORMS[letter];
-            const gg = document.createElementNS('http://www.w3.org/2000/svg','g');
-            if (t) gg.setAttribute('transform', t);
-            const d = 'M 10,60 H 60 L 10,88.8675135 Z';
-            return {group:gg, pathd:d};
-        }
+    // Draw auto/tele overlays (TBA-like)
+    function drawAutoTele(svgId, rows, isRed){
+        const svg = byId(svgId); if(!svg) return; svg.innerHTML="";
+        const letters = "ABCDEFGHIJKL";
+        const root = document.createElementNS('http://www.w3.org/2000/svg','g');
+        root.setAttribute('transform', `rotate(${isRed?0:180},60,60)`);
+        svg.appendChild(root);
 
-        // Draw background (faint wedges)
-        for (const L of letter){ const {group, pathd} = nodeWedge(L,'bg'); addPath.call({g:group}, pathd, '#000', '#fff', 0); g.appendChild(group); }
-
-        function drawRow(rowKey, flags, isAuto){
+        function drawLayer(flags, isAuto){
             const arr = flags || new Array(12).fill(false);
             for (let i=0;i<12;i++){
-                const L = letter[i];
-                const {group, pathd} = nodeWedge(L, rowKey);
-                if (isAuto && arr[i]){
-                    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-                    p.setAttribute('d', pathd);
-                    p.setAttribute('fill', 'rgba(0,255,0,.3)');
-                    p.setAttribute('stroke', '#000');
-                    p.setAttribute('stroke-width','1');
-                    p.setAttribute('stroke-linejoin','round');
-                    group.appendChild(p);
+                const L = letters[i];
+                const g = nodeGroup(L);
+                if (arr[i]){
+                    if (isAuto){
+                        const fill = document.createElementNS('http://www.w3.org/2000/svg','path');
+                        fill.setAttribute('d','M 10,60 H 60 L 10,88.8675135 Z');
+                        fill.setAttribute('fill','rgba(0,255,0,.3)');
+                        fill.setAttribute('stroke','#000'); fill.setAttribute('stroke-width','1');
+                        g.appendChild(fill);
+                    } else {
+                        g.appendChild(coralGlyph());
+                    }
                 }
-                if (!isAuto && arr[i]){
-                    group.appendChild(coralGlyph());
-                }
-                g.appendChild(group);
+                root.appendChild(g);
             }
         }
 
-        drawRow('top', rows.top, true);   // auto layer for top (L4)
-        drawRow('mid', rows.mid, true);   // auto layer for mid (L3)
-        drawRow('bot', rows.bot, true);   // auto layer for bot (L2)
+        drawLayer(rows && rows.top, true);   // L4
+        drawLayer(rows && rows.mid, true);   // L3
+        drawLayer(rows && rows.bot, true);   // L2
+        // For tele, caller passes tele rows to this same function with isAuto=false (see render)
     }
 
-    function drawTele(svgId, rows, isRed){
-        const svg = byId(svgId); if(!svg) return; svg.innerHTML="";
-        const letter = "ABCDEFGHIJKL";
-        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-        g.setAttribute('transform', `rotate(${isRed?0:180},60,60)`);
-        svg.appendChild(g);
-        function coralGlyph(){
-            const gp = document.createElementNS('http://www.w3.org/2000/svg','g');
-            const p1 = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p1.setAttribute('d','m 15,63 h 17.5 c 0,0 2.5,0 2.5,4.5 0,5 -2.5,4.5 -2.5,4.5 l -17.5,0'); p1.setAttribute('fill','none'); p1.setAttribute('stroke','#fff');
-            const p2 = document.createElementNS('http://www.w3.org/2000/svg','path');
-            p2.setAttribute('d','m 13,67.5 c 0,6 4,6 4,0 0,-6 -4,-6 -4,0 z'); p2.setAttribute('fill','#fff');
-            gp.appendChild(p1); gp.appendChild(p2); return gp;
-        }
-        function nodeGroup(letter){ const t=NODE_TRANSFORMS[letter]; const gg=document.createElementNS('http://www.w3.org/2000/svg','g'); if(t) gg.setAttribute('transform',t); return gg; }
-        function drawRow(flags){ const arr = flags || new Array(12).fill(false); for (let i=0;i<12;i++){ if(!arr[i]) continue; const L=letter[i]; const gg=nodeGroup(L); gg.appendChild(coralGlyph()); g.appendChild(gg);} }
-        drawRow(rows.top); drawRow(rows.mid); drawRow(rows.bot);
-    }
-
-    // === Build counts from node flags (A..L per row) ===
-    function countsFromNodes(autoRows, teleRows){
-        const faces='ABCDEF'; const out={}; for(const f of faces) for(let l=1;l<=4;l++) out[f+l]=0; // init
-        function bump(faceIndex, level){ const key = faces[faceIndex] + level; out[key] = (out[key]||0) + 1; }
-        function apply(rows, level){ if(!rows) return; const arrs=[rows.top, rows.mid, rows.bot]; const lvl=[4,3,2]; for(let ri=0;ri<3;ri++){ const rowArr=arrs[ri]||[]; for(let j=0;j<12;j++){ if(rowArr[j]) bump(Math.floor(j/2), lvl[ri]); } } }
-        apply(autoRows); apply(teleRows);
-        return out;
-    }
-
-    // === Renderer ===
-    // Fallback ring renderer when node flags (auto/tele) are not provided
-    function drawCountsReef(svgId, counts){
+    // Fallback: draw numeric counts ring (works for v1 #p)
+    function drawCountsReef(svgId, counts, isRed){
         const svg = byId(svgId); if(!svg) return; svg.innerHTML = "";
         const CX=60, CY=60; const rings=[[18,24],[28,34],[38,44],[48,54]]; // L1..L4
         const faces='ABCDEF';
-        function annular(cx,cy,r0,r1,a0,a1){
+        function ann(cx,cy,r0,r1,a0,a1){
             function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];}
             const p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0);
             return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`;
         }
         for(let fi=0; fi<6; fi++){
-            const a0=(Math.PI*2)*fi/6 - Math.PI/2, a1=(Math.PI*2)*(fi+1)/6 - Math.PI/2;
+            // rotate whole ring for blue to match field orientation
+            const a0=(Math.PI*2)*(isRed?fi:fi+3)/6 - Math.PI/2;
+            const a1=(Math.PI*2)*(isRed?fi+1:fi+4)/6 - Math.PI/2;
             for(let lv=1; lv<=4; lv++){
                 const k = faces[fi]+lv; const v = (counts && counts[k])|0;
                 const [r0,r1] = rings[lv-1];
                 const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-                path.setAttribute('d', annular(CX,CY,r0,r1,a0,a1));
+                path.setAttribute('d', ann(CX,CY,r0,r1,a0,a1));
                 const alpha = [0.06,0.10,0.14,0.18][lv-1];
                 path.setAttribute('fill', `rgba(90,150,255,${alpha})`);
                 path.setAttribute('stroke', '#0b1220');
@@ -259,90 +235,189 @@
         }
     }
 
-    function renderAll(payload){
-        const title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
-        setText('matchTitle', title);
-        setText('eventName', payload.eventName || '');
-        const rTeams=(payload.t&&payload.t.r)||[]; const bTeams=(payload.t&&payload.t.b)||[]; setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', (bTeams||[]).join(' • '));
-        // Ensure counts objects exist for both alliances
-        const red = payload.r || payload.RedScore || {};
-        const blue = payload.b || payload.BlueScore || {};
-
-
-        // Node overlays if available
-        const autoR = payload.auto && payload.auto.r; const autoB = payload.auto && payload.auto.b;
-        const teleR = payload.tele && payload.tele.r; const teleB = payload.tele && payload.tele.b;
-        const haveNodesR = !!(autoR||teleR); const haveNodesB = !!(autoB||teleB);
-
-
-
-        // Breakdown table
-        (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
-            const faces='ABCDEF'; for(let fi=0;fi<6;fi++){ for(let lv=1;lv<=4;lv++){ const k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) row(k,red[k],blue[k]); } }
-            row('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0); row('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
-        })();
-
-        // Visuals
-        if (haveNodesR) { drawReefNodes('reefAutoRed',  autoR, true); drawTele('reefTeleRed',  teleR, true); }
-        else { drawCountsReef('reefAutoRed', red); drawCountsReef('reefTeleRed', red); }
-
-        if (haveNodesB) { drawReefNodes('reefAutoBlue', autoB, false); drawTele('reefTeleBlue', teleB, false); }
-        else { drawCountsReef('reefAutoBlue', blue); drawCountsReef('reefTeleBlue', blue); }
-
-        try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
+    // ===== helpers to build counts from node flags =====
+    function countsFromNodes(autoRows, teleRows){
+        const faces='ABCDEF'; const out={}; for(const f of faces) for(let l=1;l<=4;l++) out[f+l]=0;
+        function bump(faceIdx, level){ const key = faces[faceIdx] + level; out[key]=(out[key]||0)+1; }
+        function apply(rows, levelMap){ if(!rows) return;
+            const arrs=[rows.top, rows.mid, rows.bot];
+            const levels=[4,3,2];
+            for(let ri=0;ri<3;ri++){
+                const rowArr = Array.isArray(arrs[ri]) ? arrs[ri] : [];
+                for(let j=0;j<12;j++){ if(rowArr[j]) bump(Math.floor(j/2), levels[ri]); }
+            }
+        }
+        apply(autoRows); apply(teleRows);
+        return out;
     }
 
-    // Breakdown table
-    (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
-        const faces='ABCDEF'; for(let fi=0;fi<6;fi++){ for(let lv=1;lv<=4;lv++){ const k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) row(k,red[k],blue[k]); } }
-        row('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0); row('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
-    })();
-
-    // Draw auto + tele overlays (if available)
-    if (autoR) drawReefNodes('reefAutoRed',  autoR, true);
-    if (autoB) drawReefNodes('reefAutoBlue', autoB, false);
-    if (teleR) drawTele('reefTeleRed',  teleR, true);
-    if (teleB) drawTele('reefTeleBlue', teleB, false);
-
-    try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
-
-
-    function showError(msg){ var el=byId('subtitle'); if(el) el.innerHTML='<span class="error">'+msg+'</span>'; console.error('[VIEWER]', msg); }
-
-    // === Decode compact packet v1/v2 ===
-    function decodePacket(bytes){ var br=new BitReader(bytes); var ver=br.read(8); if(ver!==1 && ver!==2) throw new Error('Unsupported packet version '+ver);
+    // ===== decode compact #p packets =====
+    function decodePacket(bytes){
+        var br=new BitReader(bytes);
+        var ver=br.read(8);
+        if (ver!==1 && ver!==2) throw new Error('Unsupported packet version '+ver);
         const teams=[]; for(let i=0;i<6;i++) teams.push(br.read(14)||0);
+
         if (ver===1){
-            function readReef(){ const faces='ABCDEF'; const o={}; for(let fi=0;fi<6;fi++){ const f=faces[fi]; for(let lv=1;lv<=4;lv++){ o[f+lv]=br.read(2)||0; } } return o; }
+            function readReef(){ const faces='ABCDEF', o={}; for(let fi=0;fi<6;fi++){ const f=faces[fi]; for(let lv=1;lv<=4;lv++){ o[f+lv]=br.read(2)||0; } } return o; }
             const r=readReef(), b=readReef();
             const rAR=br.read(4)||0, rAP=br.read(4)||0, bAR=br.read(4)||0, bAP=br.read(4)||0;
             r.AlgaeRemoved=rAR; r.AlgaeProcessed=rAP; b.AlgaeRemoved=bAR; b.AlgaeProcessed=bAP;
             return { t:{r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean)}, r:r, b:b };
-        } else { // v2 with node flags
-            function read36(){ const a=new Array(12).fill(false); const b=new Array(12).fill(false); const c=new Array(12).fill(false); for(let j=0;j<12;j++) a[j]=!!br.read(1); for(let j=0;j<12;j++) b[j]=!!br.read(1); for(let j=0;j<12;j++) c[j]=!!br.read(1); return {top:a, mid:b, bot:c}; }
-            const autoR = read36(); const teleR = read36(); const autoB = read36(); const teleB = read36();
+        } else {
+            function read36(){ const top=new Array(12), mid=new Array(12), bot=new Array(12);
+                for(let j=0;j<12;j++) top[j]=!!br.read(1);
+                for(let j=0;j<12;j++) mid[j]=!!br.read(1);
+                for(let j=0;j<12;j++) bot[j]=!!br.read(1);
+                return {top,mid,bot};
+            }
+            const autoR = read36(), teleR = read36(), autoB = read36(), teleB = read36();
             const rL1 = br.read(4)||0, bL1 = br.read(4)||0;
             const rAR=br.read(4)||0, rAP=br.read(4)||0, bAR=br.read(4)||0, bAP=br.read(4)||0;
-            const rc = countsFromNodes(autoR, teleR); const bc = countsFromNodes(autoB, teleB);
-            rc.A1=(rc.A1||0)+(Math.floor(rL1/6)); bc.A1=(bc.A1||0)+(Math.floor(bL1/6)); // distribute L1 evenly if needed
-            return { t:{r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean)}, r:Object.assign({AlgaeRemoved:rAR,AlgaeProcessed:rAP}, rc), b:Object.assign({AlgaeRemoved:bAR,AlgaeProcessed:bAP}, bc), auto:{r:autoR,b:autoB}, tele:{r:teleR,b:teleB} };
+
+            const rc = countsFromNodes(autoR, teleR);
+            const bc = countsFromNodes(autoB, teleB);
+
+            // distribute L1 evenly (no per-face detail in packet)
+            function addL1(out, total){ const faces='ABCDEF'; const base=Math.floor(total/6); let rem=total%6; for(let i=0;i<6;i++){ out[faces[i]+'1']=(out[faces[i]+'1']||0)+base+(rem>0?1:0); rem--; } }
+            addL1(rc, rL1); addL1(bc, bL1);
+
+            return {
+                t:{r:teams.slice(0,3).filter(Boolean), b:teams.slice(3).filter(Boolean)},
+                r:Object.assign({AlgaeRemoved:rAR,AlgaeProcessed:rAP}, rc),
+                b:Object.assign({AlgaeRemoved:bAR,AlgaeProcessed:bAP}, bc),
+                auto:{r:autoR,b:autoB},
+                tele:{r:teleR,b:teleB}
+            };
         }
     }
 
-    (function main(){ try{ const frag=parseHash(); if(!frag){
-        // demo JSON that shows auto
-        const demo={ t:{r:[111,222,333],b:[444,555,666]}, m:'Q1', auto:{ r:{ top:Array(12).fill(false).map((_,i)=>i%3===0), mid:Array(12).fill(false).map((_,i)=>i%4===0), bot:Array(12).fill(false).map((_,i)=>i%5===0) }, b:{ top:Array(12).fill(false).map((_,i)=>i%5===0), mid:Array(12).fill(false).map((_,i)=>i%3===0), bot:Array(12).fill(false).map((_,i)=>i%4===0) } }, tele:{ r:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) }, b:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) } }, r:{AlgaeRemoved:2,AlgaeProcessed:1}, b:{AlgaeRemoved:1,AlgaeProcessed:1} }; renderAll(demo); return; }
-        if(frag.kind==='p'){ const payload=decodePacket(b64urlToBytes(frag.v)); renderAll(payload); return; }
-        if(frag.kind==='json'){ const raw=decodeURIComponent(frag.v); const obj=JSON.parse(raw);
-            // If full offline payload, derive auto/tele arrays
-            if(obj && obj.result && obj.result.RedScore && obj.result.RedScore.Reef){
-                function derive(score){ const R=score.Reef||{}; const A=R.AutoBranches||[]; const T=R.Branches||[]; function row(x){ const a=Array.isArray(x)?x:[]; const top=(a[0]||[]).map(Boolean); const mid=(a[1]||[]).map(Boolean); const bot=(a[2]||[]).map(Boolean); return {top,mid,bot}; } return {auto:row(A), tele:row(T)}; }
-                const dr=derive(obj.result.RedScore); const db=derive(obj.result.BlueScore);
-                obj.auto={r:dr.auto,b:db.auto}; obj.tele={r:dr.tele,b:db.tele};
+    // ===== derive auto/tele from full offline payload JSON =====
+    function deriveAutoTeleFromOffline(obj){
+        try{
+            function rowize(mat){ const a=Array.isArray(mat)?mat:[[],[],[]]; return { top:(a[0]||[]).map(Boolean), mid:(a[1]||[]).map(Boolean), bot:(a[2]||[]).map(Boolean) }; }
+            const r = obj.result.RedScore, b = obj.result.BlueScore;
+            const rReef = r.Reef||{}, bReef = b.Reef||{};
+            const autoR = rowize(rReef.AutoBranches), teleR = rowize(rReef.Branches);
+            const autoB = rowize(bReef.AutoBranches), teleB = rowize(bReef.Branches);
+            const l1R = (+rReef.AutoTroughNear|0)+(+rReef.AutoTroughFar|0)+(+rReef.TroughNear|0)+(+rReef.TroughFar|0);
+            const l1B = (+bReef.AutoTroughNear|0)+(+bReef.AutoTroughFar|0)+(+bReef.TroughNear|0)+(+bReef.TroughFar|0);
+            const algaeR = {Removed:(+r. BargeAlgae|0)+(+r.ProcessorAlgae|0), Processed:(+r.ProcessorAlgae|0)};
+            const algaeB = {Removed:(+b. BargeAlgae|0)+(+b.ProcessorAlgae|0), Processed:(+b.ProcessorAlgae|0)};
+            const rc = countsFromNodes(autoR, teleR), bc = countsFromNodes(autoB, teleB);
+            function addL1(out,total){ const faces='ABCDEF'; const base=Math.floor(total/6); let rem=total%6; for(let i=0;i<6;i++){ out[faces[i]+'1']=(out[faces[i]+'1']||0)+base+(rem>0?1:0); rem--; } }
+            addL1(rc,l1R); addL1(bc,l1B);
+            rc.AlgaeRemoved=algaeR.Removed; rc.AlgaeProcessed=algaeR.Processed;
+            bc.AlgaeRemoved=algaeB.Removed; bc.AlgaeProcessed=algaeB.Processed;
+            return {auto:{r:autoR,b:autoB}, tele:{r:teleR,b:teleB}, r:rc, b:bc};
+        }catch(_){ return null; }
+    }
+
+    // ===== Renderer =====
+    function renderAll(payload){
+        // Title & teams
+        const title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
+        setText('matchTitle', title);
+        setText('eventName', payload.eventName || '');
+        const rTeams=(payload.t && payload.t.r) || (payload.teams && (payload.teams.red||payload.teams.r)) || [];
+        const bTeams=(payload.t && payload.t.b) || (payload.teams && (payload.teams.blue||payload.teams.b)) || [];
+        setText('teamsRed', (rTeams||[]).join(' • '));
+        setText('teamsBlue', (bTeams||[]).join(' • '));
+
+        // Determine counts objects (ensure defined first!)
+        let redCounts  = payload.r || payload.RedScore  || {};
+        let blueCounts = payload.b || payload.BlueScore || {};
+
+        // If we have node flags but missing counts, derive them
+        if ((payload.auto && payload.auto.r) || (payload.tele && payload.tele.r)){
+            const rc = countsFromNodes(payload.auto && payload.auto.r, payload.tele && payload.tele.r);
+            const bc = countsFromNodes(payload.auto && payload.auto.b, payload.tele && payload.tele.b);
+            // Merge derived counts with any existing counts
+            redCounts  = Object.assign({}, rc, redCounts);
+            blueCounts = Object.assign({}, bc, blueCounts);
+        }
+
+        // Breakdown table (uses redCounts/blueCounts only; these are DEFINITELY defined now)
+        (function(){
+            const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML='';
+            const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
+            const faces='ABCDEF';
+            for(let fi=0;fi<6;fi++){
+                for(let lv=1;lv<=4;lv++){
+                    const k=faces[fi]+lv;
+                    const rv = redCounts[k] ?? 0, bv = blueCounts[k] ?? 0;
+                    if (rv!==0 || bv!==0) row(k, rv, bv);
+                }
             }
-            renderAll(obj); return; }
-        if(frag.kind==='lz'){ if(!window.LZString||!LZString.decompressFromEncodedURIComponent) throw new Error('LZString missing'); const raw=LZString.decompressFromEncodedURIComponent(frag.v); if(!raw) throw new Error('Failed to decode compressed data'); const payload=JSON.parse(raw); renderAll(payload); return; }
-    }catch(err){ showError((err&&err.message)||String(err)); } })();
+            row('AlgaeRemoved',   redCounts.AlgaeRemoved  ||0, blueCounts.AlgaeRemoved  ||0);
+            row('AlgaeProcessed', redCounts.AlgaeProcessed||0, blueCounts.AlgaeProcessed||0);
+        })();
+
+        // Auto/Tele overlays if available, else fallback counts
+        const autoR = payload.auto && payload.auto.r;
+        const autoB = payload.auto && payload.auto.b;
+        const teleR = payload.tele && payload.tele.r;
+        const teleB = payload.tele && payload.tele.b;
+
+        if (autoR) drawAutoTele('reefAutoRed',  autoR, true); else drawCountsReef('reefAutoRed', redCounts, true);
+        if (teleR) drawAutoTele('reefTeleRed',  teleR, true); else drawCountsReef('reefTeleRed', redCounts, true);
+        if (autoB) drawAutoTele('reefAutoBlue', autoB, false); else drawCountsReef('reefAutoBlue', blueCounts, false);
+        if (teleB) drawAutoTele('reefTeleBlue', teleB, false); else drawCountsReef('reefTeleBlue', blueCounts, false);
+
+        // Raw download
+        try{
+            var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+            var url=URL.createObjectURL(blob);
+            byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>';
+        }catch(_){}
+    }
+
+    function showError(msg){ var el=byId('subtitle'); if(el) el.innerHTML='<span class="error">'+msg+'</span>'; console.error('[VIEWER]', msg); }
+
+    // ===== Bootstrap =====
+    (function main(){
+        try{
+            const frag=parseHash();
+            if(!frag){
+                // Demo if you open ?demo=1
+                if((location.search||'').match(/(^|[?&])demo=1(&|$)/)){
+                    const demo={ t:{r:[111,222,333],b:[444,555,666]}, m:'Q1',
+                        auto:{ r:{ top:Array(12).fill(false).map((_,i)=>i%3===0), mid:Array(12).fill(false).map((_,i)=>i%4===0), bot:Array(12).fill(false).map((_,i)=>i%5===0) },
+                            b:{ top:Array(12).fill(false).map((_,i)=>i%5===0), mid:Array(12).fill(false).map((_,i)=>i%3===0), bot:Array(12).fill(false).map((_,i)=>i%4===0) } },
+                        tele:{ r:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) },
+                            b:{ top:Array(12).fill(false), mid:Array(12).fill(false), bot:Array(12).fill(false) } },
+                        r:{ AlgaeRemoved:2, AlgaeProcessed:1, A2:1, B3:2, C4:1 },
+                        b:{ AlgaeRemoved:1, AlgaeProcessed:1, D3:1, E4:1 }
+                    };
+                    renderAll(demo); return;
+                }
+                showError('No data. Use #p= (compact) or #json= …'); return;
+            }
+
+            if(frag.kind==='p'){ const payload=decodePacket(b64urlToBytes(frag.v)); renderAll(payload); return; }
+            if(frag.kind==='json'){
+                const raw=decodeURIComponent(frag.v); const obj=JSON.parse(raw);
+                // If full offline payload, derive auto/tele + counts
+                if(obj && obj.result && obj.result.RedScore && obj.result.RedScore.Reef){
+                    const derived = deriveAutoTeleFromOffline(obj);
+                    if (derived){
+                        obj.auto = derived.auto; obj.tele = derived.tele; obj.r = obj.r || derived.r; obj.b = obj.b || derived.b;
+                        obj.r.AlgaeRemoved   = obj.r.AlgaeRemoved   ?? derived.r.AlgaeRemoved;
+                        obj.r.AlgaeProcessed = obj.r.AlgaeProcessed ?? derived.r.AlgaeProcessed;
+                        obj.b.AlgaeRemoved   = obj.b.AlgaeRemoved   ?? derived.b.AlgaeRemoved;
+                        obj.b.AlgaeProcessed = obj.b.AlgaeProcessed ?? derived.b.AlgaeProcessed;
+                    }
+                }
+                renderAll(obj); return;
+            }
+            if(frag.kind==='lz'){
+                if(!window.LZString||!LZString.decompressFromEncodedURIComponent) throw new Error('LZString missing');
+                const raw=LZString.decompressFromEncodedURIComponent(frag.v);
+                if(!raw) throw new Error('Failed to decode compressed data');
+                const payload=JSON.parse(raw); renderAll(payload); return;
+            }
+        }catch(err){ showError((err&&err.message)||String(err)); }
+    })();
 </script>
 </body>
 </html>
