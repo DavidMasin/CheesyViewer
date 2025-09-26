@@ -224,21 +224,54 @@
     }
 
     // === Renderer ===
+    // Fallback ring renderer when node flags (auto/tele) are not provided
+    function drawCountsReef(svgId, counts){
+        const svg = byId(svgId); if(!svg) return; svg.innerHTML = "";
+        const CX=60, CY=60; const rings=[[18,24],[28,34],[38,44],[48,54]]; // L1..L4
+        const faces='ABCDEF';
+        function annular(cx,cy,r0,r1,a0,a1){
+            function p(r,a){return [cx+r*Math.cos(a), cy+r*Math.sin(a)];}
+            const p0=p(r0,a0), p1=p(r0,a1), p2=p(r1,a1), p3=p(r1,a0);
+            return `M${p0[0]},${p0[1]} A${r0},${r0} 0 0 1 ${p1[0]},${p1[1]} L${p2[0]},${p2[1]} A${r1},${r1} 0 0 0 ${p3[0]},${p3[1]} Z`;
+        }
+        for(let fi=0; fi<6; fi++){
+            const a0=(Math.PI*2)*fi/6 - Math.PI/2, a1=(Math.PI*2)*(fi+1)/6 - Math.PI/2;
+            for(let lv=1; lv<=4; lv++){
+                const k = faces[fi]+lv; const v = (counts && counts[k])|0;
+                const [r0,r1] = rings[lv-1];
+                const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+                path.setAttribute('d', annular(CX,CY,r0,r1,a0,a1));
+                const alpha = [0.06,0.10,0.14,0.18][lv-1];
+                path.setAttribute('fill', `rgba(90,150,255,${alpha})`);
+                path.setAttribute('stroke', '#0b1220');
+                path.setAttribute('stroke-width', '1');
+                svg.appendChild(path);
+                if(v>0){
+                    const midr=(r0+r1)/2, mida=(a0+a1)/2;
+                    const tx=CX+midr*Math.cos(mida), ty=CY+midr*Math.sin(mida);
+                    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+                    t.setAttribute('x', tx); t.setAttribute('y', ty);
+                    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+                    t.setAttribute('font-size','12'); t.textContent = String(v);
+                    svg.appendChild(t);
+                }
+            }
+        }
+    }
+
     function renderAll(payload){
         const title = payload.m || (payload.match && payload.match.lite && payload.match.lite.longName) || payload.match || 'Match';
         setText('matchTitle', title);
         setText('eventName', payload.eventName || '');
         const rTeams=(payload.t&&payload.t.r)||[]; const bTeams=(payload.t&&payload.t.b)||[]; setText('teamsRed', rTeams.join(' • ')); setText('teamsBlue', bTeams.join(' • '));
 
-        // Auto/Tele rows if available
+        // Node overlays if available
         const autoR = payload.auto && payload.auto.r; const autoB = payload.auto && payload.auto.b;
         const teleR = payload.tele && payload.tele.r; const teleB = payload.tele && payload.tele.b;
+        const haveNodesR = !!(autoR||teleR); const haveNodesB = !!(autoB||teleB);
 
-        // Fallback counts
+        // Counts (always try to render at least these)
         let red = payload.r||{}; let blue=payload.b||{};
-        if ((!red.A2 && autoR) || (!blue.A2 && autoB)){
-            const rc = countsFromNodes(autoR, teleR); const bc = countsFromNodes(autoB, teleB); red = Object.assign({AlgaeRemoved:0,AlgaeProcessed:0}, rc, red); blue = Object.assign({AlgaeRemoved:0,AlgaeProcessed:0}, bc, blue);
-        }
 
         // Breakdown table
         (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
@@ -246,14 +279,30 @@
             row('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0); row('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
         })();
 
-        // Draw auto + tele overlays (if available)
-        if (autoR) drawReefNodes('reefAutoRed',  autoR, true);
-        if (autoB) drawReefNodes('reefAutoBlue', autoB, false);
-        if (teleR) drawTele('reefTeleRed',  teleR, true);
-        if (teleB) drawTele('reefTeleBlue', teleB, false);
+        // Visuals
+        if (haveNodesR) { drawReefNodes('reefAutoRed',  autoR, true); drawTele('reefTeleRed',  teleR, true); }
+        else { drawCountsReef('reefAutoRed', red); drawCountsReef('reefTeleRed', red); }
+
+        if (haveNodesB) { drawReefNodes('reefAutoBlue', autoB, false); drawTele('reefTeleBlue', teleB, false); }
+        else { drawCountsReef('reefAutoBlue', blue); drawCountsReef('reefTeleBlue', blue); }
 
         try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
     }
+
+    // Breakdown table
+    (function(){ const tbody=byId('breakdownBody'); if(!tbody) return; tbody.innerHTML=''; const row=(n,rv,bv)=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+n+'</td><td class="red">'+(rv??'')+'</td><td class="blue">'+(bv??'')+'</td>'; tbody.appendChild(tr); };
+        const faces='ABCDEF'; for(let fi=0;fi<6;fi++){ for(let lv=1;lv<=4;lv++){ const k=faces[fi]+lv; if((red[k]??0)!==0 || (blue[k]??0)!==0) row(k,red[k],blue[k]); } }
+        row('AlgaeRemoved', red.AlgaeRemoved||0, blue.AlgaeRemoved||0); row('AlgaeProcessed', red.AlgaeProcessed||0, blue.AlgaeProcessed||0);
+    })();
+
+    // Draw auto + tele overlays (if available)
+    if (autoR) drawReefNodes('reefAutoRed',  autoR, true);
+    if (autoB) drawReefNodes('reefAutoBlue', autoB, false);
+    if (teleR) drawTele('reefTeleRed',  teleR, true);
+    if (teleB) drawTele('reefTeleBlue', teleB, false);
+
+    try{ var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); byId('rawLink').innerHTML='<a href="'+url+'" download="match.json">Download raw</a>'; }catch(_){ }
+
 
     function showError(msg){ var el=byId('subtitle'); if(el) el.innerHTML='<span class="error">'+msg+'</span>'; console.error('[VIEWER]', msg); }
 
